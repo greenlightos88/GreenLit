@@ -50,6 +50,10 @@ The application now opens into a responsive SaaS shell rather than directly into
 
 Navigation collapses to a compact rail, becomes an off-canvas drawer on smaller screens, and each dense workspace independently hides secondary rails. The visual system uses restrained warm neutrals, a single bronze accent, professional editorial typography, visible focus states, and reduced-motion support.
 
+## Corner assistant
+
+A floating assistant in the lower-right corner operates the interface by typed or spoken command: navigation, compilation profiles, audience and confidentiality, screenplay modes, exports, panel toggles, and live readiness summaries computed from the real quality gates. Voice input and spoken replies use the Web Speech API when the browser provides it; the text path always works. Replies come from a deterministic command interpreter (`src/assistant/commands.ts`) — honestly labeled in the panel, with no fabricated model responses. The assistant never touches canon; canonical changes always pass through the review workflow. A model-backed conversational layer is a documented next step behind the same action interface.
+
 ## What the milestone proves
 
 - A canonical snapshot compiles into story, character, relationship, world, lore, production, department, pitch, and Studio Review profiles.
@@ -102,6 +106,7 @@ convex/domain/screenplay/            Typed script compiler, validation, Fountain
 convex/domain/compiler/              Profiles, composition, gates, impact, breakdowns
 convex/domain/delivery/              Frozen delivery packages and review-note decisions
 src/app/AppShell.tsx                Responsive SaaS navigation and command surface
+src/assistant/                       Corner assistant: interpreter, voice I/O, panel
 src/components/OrbMenu.tsx          WebGPU/WebGL interactive project orbit
 src/pages/                          Project, screenplay, delivery, and settings workspaces
 src/App.tsx                         Compilation Chamber vertical workflow

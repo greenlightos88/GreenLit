@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { Assistant } from "@/assistant/Assistant";
 import { Icon } from "@/components/Icon";
 import { fixtureSnapshot } from "@/data/fixture";
 import { navigationItems, settingsItem } from "./navigation";
@@ -179,6 +180,7 @@ export function AppShell() {
         <Outlet />
       </div>
       <CommandPalette />
+      <Assistant />
     </div>
   );
 }

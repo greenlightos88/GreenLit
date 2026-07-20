@@ -20,7 +20,10 @@ export type IconName =
   | "lock"
   | "download"
   | "users"
-  | "close";
+  | "close"
+  | "assistant"
+  | "mic"
+  | "send";
 
 const paths: Record<IconName, ReactNode> = {
   home: <><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></>,
@@ -43,6 +46,9 @@ const paths: Record<IconName, ReactNode> = {
   download: <><path d="M12 3v12m0 0 5-5m-5 5-5-5"/><path d="M5 21h14"/></>,
   users: <><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 4a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5"/></>,
   close: <path d="m6 6 12 12M18 6 6 18"/>,
+  assistant: <><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.4 5.4l2 2M16.6 16.6l2 2M18.6 5.4l-2 2M7.4 16.6l-2 2"/></>,
+  mic: <><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></>,
+  send: <path d="M4 12 20 4l-4 16-4.5-6.5L4 12Zm7.5 1.5L20 4"/>,
 };
 
 export function Icon({ name, ...props }: { name: IconName } & SVGProps<SVGSVGElement>) {

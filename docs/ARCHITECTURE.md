@@ -53,3 +53,14 @@ The cultural gate is a routing mechanism for human consultation, never an automa
 Zustand stores only ephemeral chamber controls such as selected section, inspector tab, audience, and preview mode. Persistent project, canon, document, delivery, and review state belongs to Convex. TanStack Query is configured for future non-Convex service adapters; Convex realtime subscriptions remain the source for persistent domain data.
 
 The Three.js field is ambient navigation context. Its render loop stays within React Three Fiber’s imperative frame callback and opts out of React Compiler memoization. The document editor itself uses conventional accessible HTML controls.
+
+## Corner assistant
+
+`src/assistant/` is a thin control surface, not a parallel orchestration layer. `commands.ts` is a pure, framework-free interpreter that maps phrasing onto an injected `AssistantActions` interface; the React component wires those actions to the router, the Zustand stores, and the export adapters. Readiness answers are computed on demand from the same compiler and gate modules the Chamber uses — never restated from cached copy.
+
+Boundaries the assistant must keep:
+
+1. It operates interface state and exports only. It has no write path into canon, documents, or delivery records.
+2. Replies are deterministic and labeled as such in the panel. No output pretends to be model-generated.
+3. Voice input (`SpeechRecognition`) and spoken replies (`speechSynthesis`) are progressive enhancements; every capability is reachable by keyboard and text.
+4. A future model-backed conversational layer plugs in behind the same `AssistantActions` interface and the kernel service boundary, keeping tool authority typed and inspectable.
