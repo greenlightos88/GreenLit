@@ -1,6 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet,
   RouterProvider,
   createRootRoute,
   createRoute,
@@ -9,6 +8,12 @@ import {
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { AppShell } from "./app/AppShell";
+import { OverviewPage } from "./pages/OverviewPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
+import { ScreenplayPage } from "./pages/ScreenplayPage";
+import { DeliveryPage } from "./pages/DeliveryPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import "./styles.css";
 
 const queryClient = new QueryClient({
@@ -17,13 +22,45 @@ const queryClient = new QueryClient({
   },
 });
 
-const rootRoute = createRootRoute({ component: Outlet });
-const chamberRoute = createRoute({
+const rootRoute = createRootRoute({ component: AppShell });
+const overviewRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
+  component: OverviewPage,
+});
+const projectsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/projects",
+  component: ProjectsPage,
+});
+const screenplayRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/screenplay",
+  component: ScreenplayPage,
+});
+const chamberRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/compile",
   component: App,
 });
-const routeTree = rootRoute.addChildren([chamberRoute]);
+const deliveryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/delivery",
+  component: DeliveryPage,
+});
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings",
+  component: SettingsPage,
+});
+const routeTree = rootRoute.addChildren([
+  overviewRoute,
+  projectsRoute,
+  screenplayRoute,
+  chamberRoute,
+  deliveryRoute,
+  settingsRoute,
+]);
 const router = createRouter({ routeTree });
 
 declare module "@tanstack/react-router" {

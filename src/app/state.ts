@@ -12,6 +12,10 @@ interface ChamberState {
   includeProvenance: boolean;
   selectedSectionId?: string;
   inspectorTab: InspectorTab;
+  outlineOpen: boolean;
+  inspectorOpen: boolean;
+  controlsOpen: boolean;
+  densePreview: boolean;
   setProfile: (profileId: string) => void;
   setAudience: (audience: Audience) => void;
   setConfidentiality: (confidentiality: Confidentiality) => void;
@@ -19,6 +23,10 @@ interface ChamberState {
   toggleProvenance: () => void;
   selectSection: (sectionId: string) => void;
   setInspectorTab: (tab: InspectorTab) => void;
+  toggleOutline: () => void;
+  toggleInspector: () => void;
+  toggleControls: () => void;
+  toggleDensePreview: () => void;
 }
 
 export const useChamberState = create<ChamberState>((set) => ({
@@ -28,6 +36,10 @@ export const useChamberState = create<ChamberState>((set) => ({
   screenplayMode: "submission",
   includeProvenance: false,
   inspectorTab: "provenance",
+  outlineOpen: true,
+  inspectorOpen: true,
+  controlsOpen: true,
+  densePreview: false,
   setProfile: (profileId) => set({ profileId, selectedSectionId: undefined }),
   setAudience: (audience) => set({ audience }),
   setConfidentiality: (confidentiality) => set({ confidentiality }),
@@ -36,4 +48,8 @@ export const useChamberState = create<ChamberState>((set) => ({
     set((state) => ({ includeProvenance: !state.includeProvenance })),
   selectSection: (selectedSectionId) => set({ selectedSectionId }),
   setInspectorTab: (inspectorTab) => set({ inspectorTab }),
+  toggleOutline: () => set((state) => ({ outlineOpen: !state.outlineOpen })),
+  toggleInspector: () => set((state) => ({ inspectorOpen: !state.inspectorOpen })),
+  toggleControls: () => set((state) => ({ controlsOpen: !state.controlsOpen })),
+  toggleDensePreview: () => set((state) => ({ densePreview: !state.densePreview })),
 }));

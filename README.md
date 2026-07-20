@@ -37,6 +37,19 @@ bunx convex deploy
 
 Never commit `.env.local` or a deployment credential. The current interface opens with a deterministic fixture so the compiler can be evaluated without an account; the Convex persistence boundary is implemented but must be connected to a deployment before multi-user realtime persistence is available.
 
+## Product workspaces
+
+The application now opens into a responsive SaaS shell rather than directly into the compiler. Its purposeful routes are:
+
+- `/` — an interactive Three.js project orbit that acts as spatial navigation, with WebGPU-to-WebGL fallback and accessible HTML controls
+- `/projects` — searchable project and canon portfolio management
+- `/screenplay` — mode-aware script editing, scene navigation, validation, and Fountain export
+- `/compile` — the full Compilation Chamber with collapsible outline, controls, preview density, and provenance inspector
+- `/delivery` — version-preserving Delivery Rooms with access-state controls
+- `/settings` — profile, workspace, accessibility, notifications, integrations, and billing/usage settings
+
+Navigation collapses to a compact rail, becomes an off-canvas drawer on smaller screens, and each dense workspace independently hides secondary rails. The visual system uses restrained warm neutrals, a single bronze accent, professional editorial typography, visible focus states, and reduced-motion support.
+
 ## What the milestone proves
 
 - A canonical snapshot compiles into story, character, relationship, world, lore, production, department, pitch, and Studio Review profiles.
@@ -88,7 +101,10 @@ convex/domain/graph/                 Canon snapshots, provenance, structural dif
 convex/domain/screenplay/            Typed script compiler, validation, Fountain, FDX
 convex/domain/compiler/              Profiles, composition, gates, impact, breakdowns
 convex/domain/delivery/              Frozen delivery packages and review-note decisions
-src/App.tsx                          Compilation Chamber vertical workflow
+src/app/AppShell.tsx                Responsive SaaS navigation and command surface
+src/components/OrbMenu.tsx          WebGPU/WebGL interactive project orbit
+src/pages/                          Project, screenplay, delivery, and settings workspaces
+src/App.tsx                         Compilation Chamber vertical workflow
 src/export/                          PDF, DOCX, text, HTML, JSON download adapters
 tests/                               Compiler, screenplay, delivery, and export fixtures
 ```

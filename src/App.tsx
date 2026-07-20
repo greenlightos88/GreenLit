@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { compileDocument, overrideSection, restoreGenerated, traceSection, visibleBlocks } from "@domain/compiler/compose";
 import { runQualityGates } from "@domain/compiler/gates";
 import { ALL_PROFILES, getProfile } from "@domain/compiler/profiles";
@@ -14,11 +14,7 @@ import { correctedFixtureSnapshot, fixtureSnapshot } from "@/data/fixture";
 import { downloadBlob, downloadText } from "@/export/download";
 import { exportMarkdown } from "@/export/markdown";
 import { useChamberState, type InspectorTab } from "@/app/state";
-
-const IntelligenceField = lazy(async () => {
-  const module = await import("@/components/IntelligenceField");
-  return { default: module.IntelligenceField };
-});
+import { Icon } from "@/components/Icon";
 
 const audienceOptions = [
   "internal",
@@ -387,12 +383,20 @@ function App() {
   const screenplayMode = useChamberState((state) => state.screenplayMode);
   const includeProvenance = useChamberState((state) => state.includeProvenance);
   const selectedSectionId = useChamberState((state) => state.selectedSectionId);
+  const outlineOpen = useChamberState((state) => state.outlineOpen);
+  const inspectorOpen = useChamberState((state) => state.inspectorOpen);
+  const controlsOpen = useChamberState((state) => state.controlsOpen);
+  const densePreview = useChamberState((state) => state.densePreview);
   const setProfile = useChamberState((state) => state.setProfile);
   const setAudience = useChamberState((state) => state.setAudience);
   const setConfidentiality = useChamberState((state) => state.setConfidentiality);
   const setScreenplayMode = useChamberState((state) => state.setScreenplayMode);
   const toggleProvenance = useChamberState((state) => state.toggleProvenance);
   const selectSection = useChamberState((state) => state.selectSection);
+  const toggleOutline = useChamberState((state) => state.toggleOutline);
+  const toggleInspector = useChamberState((state) => state.toggleInspector);
+  const toggleControls = useChamberState((state) => state.toggleControls);
+  const toggleDensePreview = useChamberState((state) => state.toggleDensePreview);
 
   const [document, setDocument] = useState(() =>
     createDocument(profileId, audience, confidentiality),
@@ -400,6 +404,7 @@ function App() {
   const [editing, setEditing] = useState<CompiledSection>();
   const [exporting, setExporting] = useState<string>();
   const [notice, setNotice] = useState<string>();
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   useEffect(() => {
     setDocument((previous) =>
@@ -457,39 +462,33 @@ function App() {
   const slug = fixtureSnapshot.meta.title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
   return (
-    <div className="app-shell">
-      <Suspense fallback={null}>
-        <IntelligenceField />
-      </Suspense>
-      <header className="topbar">
-        <a className="brand" href="#workspace" aria-label="GreenlightOS Compilation Chamber">
-          <span className="brand-mark">G</span>
-          <span>
-            <strong>GreenlightOS</strong>
-            <small>Production intelligence compiler</small>
-          </span>
-        </a>
-        <div className="project-identity">
-          <span className="live-pulse" />
-          <span>
-            <small>Living project</small>
-            <strong>{fixtureSnapshot.meta.title}</strong>
-          </span>
-          <span className="version-pill">Canon 04</span>
+    <main id="workspace" className={`chamber-page workspace-page${!outlineOpen ? " outline-hidden" : ""}${!inspectorOpen ? " inspector-hidden" : ""}${densePreview ? " dense-preview" : ""}`}>
+      <header className="workspace-page-header chamber-header">
+        <div>
+          <p className="overline">{fixtureSnapshot.meta.title} · Canon 04</p>
+          <h1>Compilation Chamber</h1>
+          <p>Turn approved project intelligence into a precise, traceable artifact.</p>
         </div>
-        <div className="topbar-actions">
-          <span className="saved-state">All changes saved</span>
-          <button type="button" className="avatar" aria-label="Open account menu">AO</button>
+        <div className="workspace-page-actions">
+          <button type="button" className={`button button-secondary${controlsOpen ? " active" : ""}`} onClick={toggleControls}><Icon name="sliders"/>Controls</button>
+          <div className="export-menu-wrap">
+            <button type="button" className="button button-primary" disabled={Boolean(exporting)} onClick={() => withExport("PDF", async () => {
+              const { exportPdf } = await import("@/export/pdf");
+              downloadBlob(new Blob([await exportPdf(document)], { type: "application/pdf" }), `${slug}.pdf`);
+            })}><Icon name="download"/>{exporting ?? "Export PDF"}</button>
+            <button type="button" className="export-menu-toggle" aria-label="More export formats" aria-expanded={exportMenuOpen} onClick={() => setExportMenuOpen((open) => !open)}>⌄</button>
+            {exportMenuOpen ? <div className="export-menu">
+              <button type="button" onClick={() => withExport("Markdown", () => downloadText(exportMarkdown(document, { includeProvenance }), `${slug}.md`, "text/markdown;charset=utf-8"))}>Markdown <small>.md</small></button>
+              <button type="button" onClick={() => withExport("Fountain", () => downloadText(serializeFountain(screenplay), `${slug}.fountain`))}>Screenplay <small>.fountain</small></button>
+              <button type="button" onClick={() => withExport("FDX interchange", () => downloadText(serializeFdx(screenplay), `${slug}.fdx`, "application/xml;charset=utf-8"))}>FDX interchange <small>.fdx</small></button>
+              <button type="button" onClick={() => withExport("DOCX", async () => { const { exportDocx } = await import("@/export/docx"); downloadBlob(await exportDocx(document), `${slug}.docx`); })}>Editable document <small>.docx</small></button>
+            </div> : null}
+          </div>
         </div>
       </header>
 
-      <main id="workspace" className="workspace">
-        <section className="command-bar" aria-label="Compilation controls">
-          <div className="workspace-title">
-            <p className="eyebrow">Workspace 06</p>
-            <h1>Compilation Chamber</h1>
-            <p>Living intelligence becoming deliverable form.</p>
-          </div>
+      <AnimatePresence initial={false}>
+        {controlsOpen ? <motion.section className="compilation-controls" aria-label="Compilation controls" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
           <div className="selectors">
             <label>
               <span>Document profile</span>
@@ -520,49 +519,40 @@ function App() {
               </select>
             </label>
           </div>
-          <div className="command-actions">
-            <button type="button" className={includeProvenance ? "toggle active" : "toggle"} onClick={toggleProvenance}>
-              <span /> Provenance
-            </button>
-            <div className="export-cluster" aria-label="Export formats">
-              <button type="button" disabled={Boolean(exporting)} onClick={() => withExport("Markdown", () => downloadText(exportMarkdown(document, { includeProvenance }), `${slug}.md`, "text/markdown;charset=utf-8"))}>MD</button>
-              <button type="button" disabled={Boolean(exporting)} onClick={() => withExport("Fountain", () => downloadText(serializeFountain(screenplay), `${slug}.fountain`))}>Fountain</button>
-              <button type="button" disabled={Boolean(exporting)} onClick={() => withExport("FDX interchange", () => downloadText(serializeFdx(screenplay), `${slug}.fdx`, "application/xml;charset=utf-8"))}>FDX</button>
-              <button type="button" disabled={Boolean(exporting)} onClick={() => withExport("DOCX", async () => {
-                const { exportDocx } = await import("@/export/docx");
-                downloadBlob(await exportDocx(document), `${slug}.docx`);
-              })}>DOCX</button>
-              <button type="button" className="export-primary" disabled={Boolean(exporting)} onClick={() => withExport("PDF", async () => {
-                const { exportPdf } = await import("@/export/pdf");
-                downloadBlob(new Blob([await exportPdf(document)], { type: "application/pdf" }), `${slug}.pdf`);
-              })}>
-                {exporting ?? "Export PDF"}
-              </button>
-            </div>
+          <div className="control-note">
+            <span className="status-badge status-ready">Snapshot locked</span>
+            <p>Compilation reads {fixtureSnapshot.label}. Delivered versions will remain unchanged.</p>
+            <button type="button" className={includeProvenance ? "toggle active" : "toggle"} onClick={toggleProvenance}><span/>Show provenance</button>
           </div>
-        </section>
+        </motion.section> : null}
+      </AnimatePresence>
 
-        <section className="metrics-bar" aria-label="Compilation status">
+        <section className="metrics-bar chamber-metrics" aria-label="Compilation status">
           <div><span>Source objects</span><strong>{fixtureSnapshot.objects.length}</strong><small>linked to canon snapshot</small></div>
           <div><span>Section coverage</span><strong>{completeSections}/{document.sections.length}</strong><small>{document.missingSections.length} required missing</small></div>
           <div><span>Quality gates</span><strong>{passedGates}/{gateRun.results.length}</strong><small>{gateRun.results.filter((gate) => gate.status === "fail").length} require resolution</small></div>
           <div><span>Screenplay</span><strong>{screenplay.scenes.length} scenes</strong><small>{screenplayIssues.length} validation findings</small></div>
           <div><span>Breakdown</span><strong>{requirements.length}</strong><small>reviewable requirements</small></div>
-          <div className="gpu-state"><span>Spatial field</span><strong>{"gpu" in navigator ? "WebGPU" : "WebGL"}</strong><small>graceful renderer fallback</small></div>
         </section>
 
+        <div className="chamber-viewbar">
+          <div><strong>{getProfile(document.profileId)?.title}</strong><span>{humanize(audience)} · {humanize(confidentiality)}</span></div>
+          <div>
+            <button type="button" className={outlineOpen ? "active" : ""} onClick={toggleOutline} aria-pressed={outlineOpen}><Icon name="panel-left"/><span>Outline</span></button>
+            <button type="button" className={densePreview ? "active" : ""} onClick={toggleDensePreview} aria-pressed={densePreview}><Icon name="compile"/><span>Compact</span></button>
+            <button type="button" className={inspectorOpen ? "active" : ""} onClick={toggleInspector} aria-pressed={inspectorOpen}><Icon name="panel-right"/><span>Inspector</span></button>
+          </div>
+        </div>
         <div className="chamber-grid">
-          <SectionNavigator document={document} />
+          {outlineOpen ? <SectionNavigator document={document} /> : null}
           <div className="preview-stage">
             <div className="preview-toolbar">
-              <span>Live page preview</span>
-              <span>Fit width · reader view</span>
+              <span>Live page preview</span><span>{document.sections.length} sections · {document.compilerVersion}</span>
             </div>
             <DocumentPage document={document} selectedSection={selectedSection} onSelect={selectSection} />
           </div>
-          <Inspector document={document} section={selectedSection} onEdit={setEditing} />
+          {inspectorOpen ? <Inspector document={document} section={selectedSection} onEdit={setEditing} /> : null}
         </div>
-      </main>
 
       <AnimatePresence>
         {notice ? (
@@ -584,7 +574,7 @@ function App() {
           <EditDialog section={editing} onCancel={() => setEditing(undefined)} onSave={saveEdit} onRestore={restoreEdit} />
         ) : null}
       </AnimatePresence>
-    </div>
+    </main>
   );
 }
 

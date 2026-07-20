@@ -1,7 +1,7 @@
 import { Canvas, useFrame } from "@react-three/fiber";
-import type { Renderer } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
+import { createAdaptiveRenderer } from "@/graphics/adaptiveRenderer";
 
 const pointPositions = new Float32Array(
   Array.from({ length: 78 }, (_, index) => {
@@ -14,39 +14,6 @@ const pointPositions = new Float32Array(
     return Math.sin(angle) * radius;
   }),
 );
-
-type AdaptiveRendererProps = Omit<THREE.WebGLRendererParameters, "canvas"> & {
-  // R3F intentionally models its worker canvas as an opaque EventTarget.
-  canvas: HTMLCanvasElement | EventTarget;
-};
-
-async function createAdaptiveRenderer(props: AdaptiveRendererProps): Promise<Renderer> {
-  const hasWebGpu = Boolean(
-    (navigator as Navigator & { gpu?: unknown }).gpu,
-  );
-  if (hasWebGpu) {
-    try {
-      const { WebGPURenderer } = await import("three/webgpu");
-      const renderer = new WebGPURenderer({
-        canvas: props.canvas as HTMLCanvasElement,
-        antialias: true,
-        alpha: true,
-      });
-      await renderer.init();
-      return renderer as unknown as Renderer;
-    } catch {
-      // A browser can expose navigator.gpu while denying an adapter. The
-      // artifact field remains usable through the WebGL renderer below.
-    }
-  }
-  return new THREE.WebGLRenderer({
-    ...props,
-    canvas: props.canvas as HTMLCanvasElement,
-    antialias: true,
-    alpha: true,
-    powerPreference: "high-performance",
-  });
-}
 
 function ProjectNodes() {
   "use no memo";
