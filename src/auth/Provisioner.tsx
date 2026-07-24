@@ -4,8 +4,12 @@ import { makeFunctionReference } from "convex/server";
 import { SignOutButton } from "@clerk/react";
 import { ProvisioningGate } from "./ProvisioningGate";
 
-// No _generated api in this repo (codegen requires a deployment); reference the
-// bootstrap mutation by path.
+// TEMPORARY (see docs/KNOWN_LIMITATIONS.md): this path-based reference is not
+// end-to-end typed. `convex/_generated` is not committed yet because official
+// typed codegen requires a configured Convex deployment. Once the first
+// deployment exists and `convex/_generated` is committed, replace this with the
+// typed `api.users.bootstrap`. This must remain the ONLY path-based frontend
+// reference — new frontend queries/mutations must not copy this pattern.
 const bootstrapRef = makeFunctionReference<"mutation">("users:bootstrap");
 
 /** Wires the Convex bootstrap mutation and Clerk sign-out into ProvisioningGate. */

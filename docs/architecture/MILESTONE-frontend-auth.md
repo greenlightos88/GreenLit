@@ -42,8 +42,16 @@ no workspace.
 
 - Provisioning is an explicit authenticated bootstrap, **not** a side effect of
   first project creation (an Owner may have zero projects).
-- No `_generated/api` (codegen needs a deployment); the bootstrap mutation is
-  referenced by `makeFunctionReference("users:bootstrap")`.
+- **Temporary limitation — path-based bootstrap reference.** The frontend
+  references the bootstrap mutation with
+  `makeFunctionReference<"mutation">("users:bootstrap")`, which is **not
+  end-to-end typed**. `convex/_generated` is intentionally **not committed** in
+  this PR: official typed codegen requires a configured Convex deployment (the
+  offline path only emits the degraded `AnyApi` stub, which would differ from
+  real `convex dev` output). Committing the stub, or hand-writing generated
+  files, was explicitly avoided. This is the **only** path-based frontend
+  reference and the pattern must not spread to new queries/mutations. It is
+  replaced with the typed `api.users.bootstrap` at the follow-up milestone below.
 - `ProvisioningGate` is pure (bootstrap + sign-out injected) so it is tested
   without Clerk/Convex context.
 
