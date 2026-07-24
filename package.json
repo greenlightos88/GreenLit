@@ -43,6 +43,7 @@
     "@types/three": "0.185.1",
     "@vitejs/plugin-react": "6.0.3",
     "babel-plugin-react-compiler": "1.0.0",
+    "convex-test": "^0.0.54",
     "oxlint": "1.74.0",
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
