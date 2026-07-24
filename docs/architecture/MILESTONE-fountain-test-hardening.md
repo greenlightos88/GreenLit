@@ -1,9 +1,24 @@
-# Milestone — Fountain parser/serializer test hardening
+# Milestone — pure-domain test hardening
 
 - **Type:** test coverage only (within the independent-work boundary: "tests").
 - **Branch:** `claude/test-fountain-hardening` (off `master`).
-- **Touches:** `tests/` only. **No** production code, schema, auth, or
-  architecture is changed by this milestone.
+- **Touches:** `tests/` only (plus this doc). **No** production code, schema,
+  auth, or architecture is changed by this milestone.
+
+This milestone began as a Fountain parser/serializer pass and was extended into
+a systematic hardening of the highest-risk pure domain invariants. Files added:
+
+- `tests/fountain.test.ts` — Fountain importer/serializer + FDX (27 tests).
+- `tests/canon.test.ts` — `diffSnapshots` field-level diff, `createSnapshot`
+  deep-copy immutability, and the snapshot query helpers (12 tests).
+- `tests/compose.test.ts` — `filterSnapshot` confidentiality/sequel scoping and
+  the document editing law (`overrideSection`/`restoreGenerated`/`visibleBlocks`,
+  ARCHITECTURE.md invariant 4) (9 tests).
+- `tests/staleness.test.ts` — `analyzeSectionStaleness` five-way classification
+  (current/stale/potentially-stale/conflicted/awaiting-approval/missing-required)
+  and severity ordering (7 tests).
+- `tests/validate.test.ts` — 7 previously untested `validateDraft` rules plus
+  the issue-reporting-contract invariant (8 tests).
 
 ## Rationale
 
