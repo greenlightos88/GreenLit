@@ -37,9 +37,11 @@ export async function requireAuthenticatedUser(ctx: AnyQueryCtx) {
 }
 
 /**
- * WRITE. Find-or-create the `users` row for the authenticated human. Called
- * only at explicit provisioning points (first project creation) — never from a
- * read path, so reads never write.
+ * WRITE. Provision (or refresh) the `users` row for the authenticated human.
+ * Creates the row on first sight and, on later sightings, updates the stored
+ * profile when Clerk's claims (email / display name) have changed. Called only
+ * at explicit provisioning points (project creation) — never from a read path,
+ * so reads never write.
  */
 export async function ensureCurrentUser(ctx: AnyMutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -48,7 +50,23 @@ export async function ensureCurrentUser(ctx: AnyMutationCtx) {
     .query("users")
     .withIndex("by_subject", (q) => q.eq("subject", identity.subject))
     .unique();
-  if (existing) return existing;
+  if (existing) {
+    const userId = existing._id as GenericId<"users">;
+    const updates: { email?: string; displayName?: string } = {};
+    if (identity.email !== undefined && existing.email !== identity.email) {
+      updates.email = identity.email;
+    }
+    if (identity.name !== undefined && existing.displayName !== identity.name) {
+      updates.displayName = identity.name;
+    }
+    if (Object.keys(updates).length > 0) {
+      await ctx.db.patch(userId, updates);
+      const refreshed = await ctx.db.get(userId);
+      if (!refreshed) throw new Error("Failed to refresh user.");
+      return refreshed;
+    }
+    return existing;
+  }
   const id = await ctx.db.insert("users", {
     subject: identity.subject,
     // Omit optional fields entirely when Clerk did not supply them, rather than

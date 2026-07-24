@@ -266,9 +266,11 @@ async function requireAuthenticatedUser(ctx): Promise<UserDoc> {
   return user;
 }
 
-// WRITE. Find-or-create the users row for the authenticated human. Called only
-// at explicit provisioning points (first sign-in bootstrap; creating a project
-// in saveProjectSnapshot) — never from a read path.
+// WRITE. Provision-or-refresh the users row for the authenticated human:
+// create on first sight; on later sightings update the stored profile when
+// Clerk's email/display-name claims have changed. Called only at explicit
+// provisioning points (creating a project in saveProjectSnapshot) — never from
+// a read path.
 async function ensureCurrentUser(ctx): Promise<UserDoc> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new Error("Not authenticated.");
