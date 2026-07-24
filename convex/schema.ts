@@ -36,15 +36,33 @@ const jobStatus = v.union(
 );
 
 export default defineSchema({
+  // Authenticated human identity, keyed by the stable Clerk subject (JWT `sub`).
+  // Identity is established by Clerk; authorization is enforced by Convex
+  // functions (ADR-0002). External delivery recipients and AI/service agents
+  // are NOT users and never appear here.
+  users: defineTable({
+    subject: v.string(),
+    email: v.optional(v.string()),
+    displayName: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_subject", ["subject"]),
+
   projects: defineTable({
     title: v.string(),
     format: v.optional(v.string()),
     genre: v.optional(v.string()),
     developmentStatus: v.optional(v.string()),
     currentVersion: v.number(),
+    // Owner is optional at the column level so pre-ownership rows stay valid;
+    // ownership is enforced in code and an ownerless row is access-denied
+    // (ADR-0002 §10.4). A future membership table replaces the ownership check,
+    // not this column.
+    ownerUserId: v.optional(v.id("users")),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_updated", ["updatedAt"]),
+  })
+    .index("by_updated", ["updatedAt"])
+    .index("by_owner", ["ownerUserId", "updatedAt"]),
 
   projectObjects: defineTable({
     projectId: v.id("projects"),
@@ -103,6 +121,10 @@ export default defineSchema({
     confidentiality: v.string(),
     qualityGateStatus: v.string(),
     approvalStatus,
+    // Approver identity is persisted (ADR-0002 §10): approval is the slice's
+    // authority-bearing act, so who approved and when are durable, not dropped.
+    approvedByUserId: v.optional(v.id("users")),
+    approvedAt: v.optional(v.number()),
     exportStatus: v.string(),
     deliveryStatus: v.string(),
     createdAt: v.number(),

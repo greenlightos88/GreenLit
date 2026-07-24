@@ -1,5 +1,10 @@
 import { mutationGeneric as mutation, queryGeneric as query } from "convex/server";
 import { v } from "convex/values";
+import {
+  assertProjectAccess,
+  ensureCurrentUser,
+  requireAuthenticatedUser,
+} from "./identity";
 
 /** Store a project graph and create the immutable snapshot used by compilers. */
 export const saveProjectSnapshot = mutation({
@@ -15,14 +20,23 @@ export const saveProjectSnapshot = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    const existing = args.projectId ? await ctx.db.get(args.projectId) : null;
-    const projectVersion = (existing?.currentVersion ?? 0) + 1;
+    // Provision (or resolve) the authenticated human, then verify ownership of
+    // an existing project before touching it. New projects are stamped with the
+    // caller as owner.
+    const user = await ensureCurrentUser(ctx);
+    const existing = args.projectId
+      ? (await assertProjectAccess(ctx, args.projectId)).project
+      : null;
+    // `existing` is a loosely typed generic document; currentVersion is a
+    // number per the schema.
+    const projectVersion = ((existing?.currentVersion as number | undefined) ?? 0) + 1;
     const projectId = args.projectId ?? await ctx.db.insert("projects", {
       title: args.title,
       format: args.format,
       genre: args.genre,
       developmentStatus: args.developmentStatus,
       currentVersion: projectVersion,
+      ownerUserId: user._id,
       createdAt: now,
       updatedAt: now,
     });
@@ -78,16 +92,25 @@ export const saveProjectSnapshot = mutation({
 
 export const listProjects = query({
   args: {},
-  handler: async (ctx) =>
-    ctx.db.query("projects").withIndex("by_updated").order("desc").collect(),
+  handler: async (ctx) => {
+    // Scoped to the authenticated owner — no longer returns every project.
+    const user = await requireAuthenticatedUser(ctx);
+    return ctx.db
+      .query("projects")
+      .withIndex("by_owner", (q) => q.eq("ownerUserId", user._id))
+      .order("desc")
+      .collect();
+  },
 });
 
 export const getLatestSnapshot = query({
   args: { projectId: v.id("projects") },
-  handler: async (ctx, { projectId }) =>
-    ctx.db
+  handler: async (ctx, { projectId }) => {
+    await assertProjectAccess(ctx, projectId);
+    return ctx.db
       .query("canonSnapshots")
       .withIndex("by_project", (q) => q.eq("projectId", projectId))
       .order("desc")
-      .first(),
+      .first();
+  },
 });
