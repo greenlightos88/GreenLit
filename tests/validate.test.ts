@@ -7,6 +7,7 @@ import type {
   ScreenplayScene,
   SceneHeadingParts,
 } from "../convex/domain/screenplay/types";
+import type { CanonSnapshot } from "../convex/domain/graph/types";
 import { fixtureSnapshot } from "../src/data/fixture";
 
 /**
@@ -124,5 +125,56 @@ describe("validateDraft rules", () => {
     expect(issue?.proposedFix).toBeTruthy();
     expect((issue?.affectedDocuments.length ?? 0)).toBeGreaterThan(0);
     expect(typeof issue?.requiresApproval).toBe("boolean");
+  });
+});
+
+/** Replace fields on one canonical scene object to trigger graph-linked rules. */
+function mutateScene(id: string, patch: Record<string, unknown>): CanonSnapshot {
+  return {
+    ...fixtureSnapshot,
+    objects: fixtureSnapshot.objects.map((o) =>
+      o.kind === "scene" && o.id === id ? ({ ...o, ...patch } as typeof o) : o,
+    ),
+  };
+}
+
+describe("validateDraft graph-linked rules", () => {
+  test("flags dialogue attributed to a character absent from the linked scene", () => {
+    // scene-lagoon's canonical cast is Amara + Kelechi; Nneka Okoye is a known
+    // character (cue must be the full name to match canon) but absent here.
+    const d = draft([
+      scene({}, [makeElement("character", "NNEKA OKOYE")], { sceneObjectId: "scene-lagoon" }),
+    ]);
+    const issue = validateDraft(d, fixtureSnapshot).find(
+      (i) => i.code === "dialogue-absent-character",
+    );
+    expect(issue?.severity).toBe("error");
+  });
+
+  test("flags a tone-law forbidden term as a law conflict", () => {
+    const d = draft([scene({}, [makeElement("action", "A MAGIC LASER ignites the pier.")])]);
+    expect(validateDraft(d, fixtureSnapshot).map((i) => i.code)).toContain("law-conflict");
+  });
+
+  test("routes a cultural-law forbidden term to the cultural-accuracy code", () => {
+    const d = draft([scene({}, [makeElement("action", "They speak an AFRICAN DIALECT.")])]);
+    expect(validateDraft(d, fixtureSnapshot).map((i) => i.code)).toContain("cultural-accuracy");
+  });
+
+  test("flags a story beat realized by no scene (fixture carries one)", () => {
+    const d = draft([scene({}, [makeElement("action", "A quiet establishing beat.")])]);
+    expect(validateDraft(d, fixtureSnapshot).map((i) => i.code)).toContain("incomplete-story-beat");
+  });
+
+  test("flags a canonical scene with no stated dramatic purpose", () => {
+    const snapshot = mutateScene("scene-lagoon", { purpose: undefined });
+    const d = draft([scene({}, [makeElement("action", "A.")])]);
+    expect(validateDraft(d, snapshot).map((i) => i.code)).toContain("missing-scene-purpose");
+  });
+
+  test("flags a setup whose payoff scene no longer exists", () => {
+    const snapshot = mutateScene("scene-return", { setupForSceneIds: ["scene-that-was-cut"] });
+    const d = draft([scene({}, [makeElement("action", "A.")])]);
+    expect(validateDraft(d, snapshot).map((i) => i.code)).toContain("broken-setup-payoff");
   });
 });
