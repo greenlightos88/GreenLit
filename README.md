@@ -11,6 +11,13 @@ bun install
 bun run dev
 ```
 
+The app requires authentication. Copy `.env.example` to `.env.local` and set
+`VITE_CONVEX_URL` and `VITE_CLERK_PUBLISHABLE_KEY`, and configure Clerk + Convex
+per [`docs/CLERK_CONVEX_SETUP.md`](docs/CLERK_CONVEX_SETUP.md). Without those
+variables the app boots to a clear configuration message. It opens signed-out;
+after sign-in an authenticated bootstrap provisions the current user before the
+workspace mounts.
+
 Run every local verification step:
 
 ```bash
@@ -35,7 +42,11 @@ bun run build
 bunx convex deploy
 ```
 
-Never commit `.env.local` or a deployment credential. The current interface opens with a deterministic fixture so the compiler can be evaluated without an account; the Convex persistence boundary is implemented but must be connected to a deployment before multi-user realtime persistence is available.
+Never commit `.env.local` or a deployment credential. Authentication (Clerk) and
+authorization (Convex) are wired: the app requires sign-in, and project access is
+owner-scoped server-side. See [`docs/CLERK_CONVEX_SETUP.md`](docs/CLERK_CONVEX_SETUP.md).
+The compiler workspaces still render from a deterministic fixture until the
+canon-approval and persistence read paths are connected to live queries.
 
 ## Product workspaces
 

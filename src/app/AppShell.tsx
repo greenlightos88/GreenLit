@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { UserButton } from "@clerk/react";
 import { Assistant } from "@/assistant/Assistant";
 import { Icon } from "@/components/Icon";
 import { fixtureSnapshot } from "@/data/fixture";
@@ -78,13 +79,9 @@ function CommandPalette() {
 
 function HeaderMenus() {
   const notificationOpen = useShellState((state) => state.notificationOpen);
-  const accountOpen = useShellState((state) => state.accountOpen);
   const toggleNotifications = useShellState((state) => state.toggleNotifications);
-  const toggleAccount = useShellState((state) => state.toggleAccount);
   const [unread, setUnread] = useState(2);
-  const [locked, setLocked] = useState(false);
   return (
-    <>
     <div className="header-actions">
       <div className="header-popover-anchor">
         <button className="icon-button" type="button" aria-label="Notifications" aria-expanded={notificationOpen} onClick={toggleNotifications}>
@@ -98,20 +95,8 @@ function HeaderMenus() {
           </div>
         ) : null}
       </div>
-      <div className="header-popover-anchor">
-        <button className="account-button" type="button" aria-label="Account menu" aria-expanded={accountOpen} onClick={toggleAccount}>
-          <span>AO</span><span><strong>Amara Okoye</strong><small>Owner</small></span>
-        </button>
-        {accountOpen ? (
-          <div className="header-popover account-popover">
-            <Link to="/settings" onClick={toggleAccount}><Icon name="settings"/>Account settings</Link>
-            <button type="button" onClick={() => { toggleAccount(); setLocked(true); }}><Icon name="lock"/>Lock workspace</button>
-          </div>
-        ) : null}
-      </div>
+      <UserButton />
     </div>
-    {locked ? <div className="locked-overlay" role="dialog" aria-modal="true"><div><span className="workspace-monogram">IS</span><p className="overline">Workspace locked</p><h2>Independent slate</h2><p>Your session and unsaved interface state are preserved.</p><button type="button" className="button button-primary" onClick={() => setLocked(false)}>Unlock workspace</button></div></div> : null}
-    </>
   );
 }
 

@@ -7,6 +7,9 @@ import {
 } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { ClerkProvider, useAuth } from "@clerk/react";
+import { ConvexReactClient } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
 import App from "./App";
 import { AppShell } from "./app/AppShell";
 import { OverviewPage } from "./pages/OverviewPage";
@@ -14,6 +17,9 @@ import { ProjectsPage } from "./pages/ProjectsPage";
 import { ScreenplayPage } from "./pages/ScreenplayPage";
 import { DeliveryPage } from "./pages/DeliveryPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { readAuthConfig } from "./auth/config";
+import { AuthBoundary } from "./auth/AuthBoundary";
+import { ConfigError } from "./auth/ConfigError";
 import "./styles.css";
 
 const queryClient = new QueryClient({
@@ -71,11 +77,37 @@ declare module "@tanstack/react-router" {
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("GreenlightOS root element was not found.");
+const root = createRoot(rootElement);
 
-createRoot(rootElement).render(
-  <StrictMode>
+/** The authenticated application: existing providers, mounted only after the
+ * user is signed in and provisioned. */
+function ApplicationProviders() {
+  return (
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>
-  </StrictMode>,
-);
+  );
+}
+
+try {
+  const config = readAuthConfig();
+  const convex = new ConvexReactClient(config.convexUrl);
+  root.render(
+    <StrictMode>
+      <ClerkProvider publishableKey={config.clerkPublishableKey} afterSignOutUrl="/">
+        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+          <AuthBoundary>
+            <ApplicationProviders />
+          </AuthBoundary>
+        </ConvexProviderWithClerk>
+      </ClerkProvider>
+    </StrictMode>,
+  );
+} catch (error) {
+  // Missing/invalid configuration must fail with a clear message, not a blank page.
+  root.render(
+    <StrictMode>
+      <ConfigError message={error instanceof Error ? error.message : String(error)} />
+    </StrictMode>,
+  );
+}
