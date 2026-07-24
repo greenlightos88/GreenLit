@@ -192,6 +192,18 @@ describe("PR-1 approval", () => {
     ).rejects.toThrow(/authenticated/i);
   });
 
+  test("a provisioned non-owner cannot approve another owner's document", async () => {
+    const t = setup();
+    const documentId = await seedReadyDocument(t); // source project owned by "approver"
+    // The intruder is authenticated and provisioned (owns their own project),
+    // but does not own the document's source project.
+    const asIntruder = t.withIdentity({ subject: "intruder" });
+    await asIntruder.mutation(api.projects.saveProjectSnapshot, project("intruder-own"));
+    await expect(
+      asIntruder.mutation(api.quality.approveCompiledDocument, { documentId }),
+    ).rejects.toThrow(/forbidden/i);
+  });
+
   test("a caller-supplied actor string cannot bypass approval", async () => {
     const t = setup();
     const documentId = await seedReadyDocument(t);
@@ -259,12 +271,16 @@ describe("PR-1 constrained ownership backfill", () => {
   });
 });
 
-/** Seed a gate-passed compiled document plus its approver user. */
+/** Seed a gate-passed compiled document owned (via its source project) by "approver". */
 async function seedReadyDocument(t: T) {
   return t.run(async (ctx) => {
+    // The approver owns the document's source project — approval is authorized
+    // against that project, not merely against being authenticated.
+    const approverId = await ctx.db.insert("users", { subject: "approver", createdAt: 0 });
     const projectId = await ctx.db.insert("projects", {
       title: "P",
       currentVersion: 1,
+      ownerUserId: approverId,
       createdAt: 0,
       updatedAt: 0,
     });
@@ -275,7 +291,6 @@ async function seedReadyDocument(t: T) {
       objects: [],
       createdAt: 0,
     });
-    await ctx.db.insert("users", { subject: "approver", createdAt: 0 });
     return ctx.db.insert("compiledDocuments", {
       sourceProject: projectId,
       projectVersion: 1,

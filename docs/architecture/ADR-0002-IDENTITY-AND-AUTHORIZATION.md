@@ -308,15 +308,19 @@ Agent/service entry points do **not** call these; they run as Convex
 `requireAuthenticatedUser` throws for them by construction — no agent principal
 type needs to exist for the human-only guarantee to hold.
 
-**Approval is human-only, atomic, and single-shot.** `approveCompiledDocument`
-resolves the human via `requireAuthenticatedUser` (an internal/agent caller has
-no identity and is rejected), guards against re-approval, and writes status and
+**Approval is owner-authorized, human-only, atomic, and single-shot.**
+`approveCompiledDocument` loads the document, then authorizes the caller against
+the document's **source project** through the same `assertProjectAccess` choke
+point — authenticating the human is not enough; only the project's owner may
+approve its document. An internal/agent caller (no identity) and any non-owner
+are both rejected. It then guards against re-approval and writes status and
 approver in one patch inside the mutation's transaction:
 
 ```ts
-const user = await requireAuthenticatedUser(ctx);         // human-only
 const doc = await ctx.db.get(documentId);
 if (!doc) throw new Error("Compiled document not found.");
+// Authorize against the document's project (resolves the user + checks owner).
+const { user } = await assertProjectAccess(ctx, doc.sourceProject);
 if (doc.qualityGateStatus !== "ready") throw new Error("Gates not ready.");
 if (doc.approvalStatus === "approved" || doc.approvalStatus === "delivered") {
   throw new Error("Document already approved.");           // guard re-approval
@@ -392,6 +396,9 @@ caller's property).
 - owner access succeeds and `listProjects` returns only the caller's projects;
 - an un-backfilled (ownerless) project is inaccessible;
 - `approveCompiledDocument` re-approval is rejected (single-shot guard);
+- **approval is owner-authorized** — a provisioned user who does not own the
+  document's source project is rejected (approval authorizes against
+  `document.sourceProject`, not merely against being authenticated);
 - **approval is human-only** — verified by driving it through the actual
   no-identity path (`ctx.auth.getUserIdentity()` returns `null`, as it does for
   any `internalMutation`/agent caller) and asserting rejection. **We do not

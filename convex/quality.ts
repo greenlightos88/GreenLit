@@ -1,6 +1,7 @@
 import { mutationGeneric as mutation } from "convex/server";
 import { v } from "convex/values";
-import { requireAuthenticatedUser } from "./identity";
+import type { GenericId } from "convex/values";
+import { assertProjectAccess } from "./identity";
 
 export const persistQualityGateRun = mutation({
   args: {
@@ -50,12 +51,17 @@ export const approveCompiledDocument = mutation({
     documentId: v.id("compiledDocuments"),
   },
   handler: async (ctx, { documentId }) => {
-    // Approval is human-only: an internal/agent caller has no ctx.auth identity
-    // and is rejected here. The approver is derived from the authenticated
-    // human, never supplied by the caller.
-    const user = await requireAuthenticatedUser(ctx);
     const document = await ctx.db.get(documentId);
     if (!document) throw new Error("Compiled document not found.");
+    // Authorize the caller against the document's source project: only that
+    // project's owner may approve it. assertProjectAccess resolves the
+    // authenticated human and checks ownership in one place, so an
+    // internal/agent caller (no ctx.auth identity) and any non-owner are both
+    // rejected. The approver is derived from identity, never supplied.
+    const { user } = await assertProjectAccess(
+      ctx,
+      document.sourceProject as GenericId<"projects">,
+    );
     if (document.qualityGateStatus !== "ready") {
       throw new Error("Quality gates must pass or be overridden before approval.");
     }
