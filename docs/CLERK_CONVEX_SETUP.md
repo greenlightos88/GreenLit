@@ -56,6 +56,24 @@ bridges Clerk's `useAuth().getToken` to the Convex client, attaching and
 refreshing the JWT on Convex requests. Convex verifies it against
 `auth.config.ts`; server functions then read `ctx.auth.getUserIdentity()`.
 
+## Generated code (`convex/_generated`)
+
+`convex/_generated` is **committed** so clients import the typed `api` and the
+repo typechecks without running codegen first.
+
+- Running `bunx convex dev` regenerates it automatically; commit any changes
+  under `convex/_generated`. **Never edit generated files by hand.**
+- `convex dev` also supports an **anonymous local deployment** that needs no
+  cloud account — useful for regenerating typed code locally. The generated
+  client (`api`, `dataModel`, `server`) is derived from local schema/functions,
+  so it is identical whether produced against a local or cloud deployment.
+- A `bun run check` guard (`scripts/no-untyped-convex-refs.sh`) fails if any
+  `src/` file uses untyped `makeFunctionReference`/`anyApi` — frontend code must
+  reference functions through the typed `api`.
+- CI does not currently regenerate or verify freshness of generated code (that
+  awaits a deliberate CI credential/deployment strategy); regeneration is a
+  documented developer step.
+
 ## Common misconfiguration
 
 If every call is unauthenticated, check that the Clerk integration/template
