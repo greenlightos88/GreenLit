@@ -1,9 +1,10 @@
 # ADR-0002 — Identity and Authorization
 
-- **Status:** Proposed (provider choice **pending Owner confirmation** on the
-  open questions in §8). Authorization model and identity taxonomy are
-  recommended for adoption now.
-- **Date:** 2026-07-24
+- **Status:** **Accepted** (Owner-approved 2026-07-24). Provider = **Clerk**;
+  the §8 open questions are resolved in §9. Concrete PR-1 schema and
+  authorization flow are specified in §10 for architectural review **before**
+  implementation begins.
+- **Date:** 2026-07-24 (proposed); 2026-07-24 (accepted)
 - **Supersedes / relates to:** the existing `docs/ARCHITECTURE.md` serves as the
   de-facto ADR-0001 (compiler + Convex persistence architecture). No numbered
   ADR-0001 file exists yet; backfilling one is recommended but out of scope
@@ -191,3 +192,133 @@ reserved but the mechanisms are not built.
 Until these are answered, PR-1 in the implementation plan builds only the
 **provider-independent** identity plumbing and authorization choke point behind
 a thin, swappable auth adapter.
+
+## 9. Owner decisions (2026-07-24) — §8 resolved
+
+1. **Provider = Clerk.** Clerk establishes *human identity only*. **Clerk is not
+   the authorization system.** Convex functions remain the sole enforcer of
+   project access and product permissions. A Clerk token that authenticates a
+   human grants nothing until a Convex function checks ownership.
+2. **Tenancy = single sovereign Owner, structurally membership-ready.** Build for
+   one Owner now, but route every access check through one choke point so a
+   membership table can later replace the owner check without touching call
+   sites. Do **not** add `organizations`/`memberships` tables yet.
+3. **External delivery recipients stay separate from workspace users** and use
+   scoped delivery-room **access tokens** — never Clerk accounts, never a
+   `users` row, never `assertProjectAccess`.
+4. **AI agents are service principals** with explicit attribution and **may never
+   approve Canon or delivery**. They never traverse authenticated-human code
+   paths.
+
+## 10. Proposed PR-1 design (for review before implementation)
+
+Scope is exactly the approved PR-1 list; nothing here touches snapshots, Canon
+history, or relationships.
+
+### 10.1 Schema additions (`convex/schema.ts`)
+
+```ts
+// NEW — human identity, keyed by the stable Clerk subject (JWT `sub`).
+users: defineTable({
+  subject: v.string(),        // Clerk `sub` — stable across sessions/logins
+  email: v.optional(v.string()),
+  displayName: v.optional(v.string()),
+  createdAt: v.number(),
+}).index("by_subject", ["subject"]),
+
+// CHANGED — projects gain an owner. Optional at the column level so existing
+// rows remain valid; ownership is enforced in code, and backfilled explicitly
+// (see 10.4). A later membership table is the seam, not a schema change here.
+projects: defineTable({
+  /* …existing fields… */
+  ownerUserId: v.optional(v.id("users")),   // NEW
+}).index("by_updated", ["updatedAt"])
+  .index("by_owner", ["ownerUserId"]),      // NEW — scopes listProjects
+```
+
+`approveCompiledDocument` currently drops `approvedBy`. PR-1 persists the
+approver. Minimal, additive change to the existing `compiledDocuments` row via a
+patch (`approvedByUserId: v.optional(v.id("users"))`, `approvedAt:
+v.optional(v.number())`) — recorded here as the intended shape; the exact field
+placement is part of the PR-1 diff for review.
+
+Delivery-recipient tokens (§3.3) are **out of PR-1** (they belong to PR-4); no
+recipient-token columns are added in this PR. The seam is preserved.
+
+### 10.2 Authorization choke point (`convex/identity.ts`, NEW)
+
+```ts
+// Human identity → Convex user row. Throws when unauthenticated.
+async function requireAuthenticatedUser(ctx): Promise<UserDoc> {
+  const identity = await ctx.auth.getUserIdentity();      // Clerk-populated
+  if (!identity) throw new Error("Not authenticated.");
+  // upsert users row keyed by identity.subject; return it
+}
+
+// The single project access gate. Membership later replaces the body only.
+async function assertProjectAccess(ctx, projectId): Promise<UserDoc> {
+  const user = await requireAuthenticatedUser(ctx);
+  const project = await ctx.db.get(projectId);
+  if (!project) throw new Error("Project not found.");
+  if (project.ownerUserId !== user._id) throw new Error("Forbidden.");
+  return user;
+}
+```
+
+Agent/service entry points do **not** call these; they run as Convex
+`internalMutation`/`internalAction` and are structurally barred from the
+human-approval functions.
+
+### 10.3 Authorization flow (per request)
+
+```text
+Browser (Clerk session/JWT)
+   │  Convex client attaches the Clerk token
+   ▼
+Convex function
+   │  ctx.auth.getUserIdentity()          ← Clerk = WHO the human is
+   ▼
+requireAuthenticatedUser → users row
+   │
+   ▼
+assertProjectAccess(projectId)            ← Convex = WHAT they may touch
+   │  ownerUserId === user._id ? proceed : throw
+   ▼
+read/write scoped to the owner's project
+```
+
+PR-1 applies this to the vertical slice: `saveProjectSnapshot` (stamps/*asserts*
+`ownerUserId`), `listProjects` (scoped via `by_owner`), `getLatestSnapshot`, and
+the approval path (persists approver; human-only). Caller-supplied human
+identity args (`requestedBy`, `author`, `decidedBy`, `overriddenBy`,
+`createdBy`, `approvedBy`) are removed where an authenticated identity is
+derivable from `ctx.auth`.
+
+### 10.4 Migration strategy (explicit — no silent ownership)
+
+Existing `projects` rows have no `ownerUserId`. **Production code must never
+auto-assign ownership** (an unauthenticated row must not silently become some
+caller's property).
+
+- **Development / seed:** a guarded `internalMutation`
+  (`backfillProjectOwner({ projectId, subject })`) that an operator invokes
+  explicitly to assign a known Clerk subject as owner. Never runs automatically.
+- **Reads of unowned rows:** `assertProjectAccess` treats `ownerUserId ===
+  undefined` as **access-denied**, not access-granted — so an un-backfilled row
+  is inert, never world-readable.
+- **`saveProjectSnapshot` on a new project:** stamps `ownerUserId` from the
+  authenticated caller at creation.
+- Because no deployment has run yet (discovery §5), the practical data
+  population is greenfield; the backfill exists for any dev deployment that
+  seeded rows before this PR.
+
+### 10.5 Tests required by PR-1
+
+Unauthenticated access is rejected; cross-project access is rejected (owner-A
+cannot read/write owner-B); owner access succeeds; `listProjects` is
+owner-scoped; an un-backfilled (ownerless) project is inaccessible; and an
+**agent/service principal is rejected from `approveCompiledDocument`**.
+
+> **Gate:** implementation of §10 does not begin until this ADR revision has had
+> independent architectural review. This section is the "show the proposed
+> schema and authorization flow" deliverable, not an implementation record.
