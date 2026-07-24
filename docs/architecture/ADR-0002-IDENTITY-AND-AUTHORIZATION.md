@@ -247,27 +247,85 @@ recipient-token columns are added in this PR. The seam is preserved.
 
 ### 10.2 Authorization choke point (`convex/identity.ts`, NEW)
 
+Reads must not write. Provisioning (creating the `users` row) is a distinct,
+explicit act from resolving an already-provisioned user, so the two are separate
+functions:
+
 ```ts
-// Human identity → Convex user row. Throws when unauthenticated.
+// READ-ONLY. Resolve the authenticated human to an existing users row.
+// Never inserts. Used by every read/authorization path. Throws when
+// unauthenticated (no Clerk identity) or not yet provisioned.
 async function requireAuthenticatedUser(ctx): Promise<UserDoc> {
   const identity = await ctx.auth.getUserIdentity();      // Clerk-populated
   if (!identity) throw new Error("Not authenticated.");
-  // upsert users row keyed by identity.subject; return it
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_subject", (q) => q.eq("subject", identity.subject))
+    .unique();
+  if (!user) throw new Error("User not provisioned.");
+  return user;
 }
 
-// The single project access gate. Membership later replaces the body only.
-async function assertProjectAccess(ctx, projectId): Promise<UserDoc> {
-  const user = await requireAuthenticatedUser(ctx);
+// WRITE. Find-or-create the users row for the authenticated human. Called only
+// at explicit provisioning points (first sign-in bootstrap; creating a project
+// in saveProjectSnapshot) — never from a read path.
+async function ensureCurrentUser(ctx): Promise<UserDoc> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("Not authenticated.");
+  const existing = await ctx.db
+    .query("users")
+    .withIndex("by_subject", (q) => q.eq("subject", identity.subject))
+    .unique();
+  if (existing) return existing;
+  const id = await ctx.db.insert("users", {
+    subject: identity.subject,
+    email: identity.email,
+    displayName: identity.name,
+    createdAt: Date.now(),
+  });
+  return (await ctx.db.get(id))!;
+}
+
+// The single project access gate. Returns BOTH the resolved user and the
+// project so callers never re-fetch (one read, one ownership check).
+// Membership later replaces only the ownership predicate below.
+async function assertProjectAccess(ctx, projectId): Promise<{ user: UserDoc; project: ProjectDoc }> {
+  const user = await requireAuthenticatedUser(ctx);       // read-only
   const project = await ctx.db.get(projectId);
   if (!project) throw new Error("Project not found.");
-  if (project.ownerUserId !== user._id) throw new Error("Forbidden.");
-  return user;
+  // Ownerless rows are access-denied, not access-granted (see 10.4).
+  if (project.ownerUserId === undefined || project.ownerUserId !== user._id) {
+    throw new Error("Forbidden.");
+  }
+  return { user, project };
 }
 ```
 
 Agent/service entry points do **not** call these; they run as Convex
-`internalMutation`/`internalAction` and are structurally barred from the
-human-approval functions.
+`internalMutation`/`internalAction`, which carry **no `ctx.auth` identity**, so
+`requireAuthenticatedUser` throws for them by construction — no agent principal
+type needs to exist for the human-only guarantee to hold.
+
+**Approval is human-only, atomic, and single-shot.** `approveCompiledDocument`
+resolves the human via `requireAuthenticatedUser` (an internal/agent caller has
+no identity and is rejected), guards against re-approval, and writes status and
+approver in one patch inside the mutation's transaction:
+
+```ts
+const user = await requireAuthenticatedUser(ctx);         // human-only
+const doc = await ctx.db.get(documentId);
+if (!doc) throw new Error("Compiled document not found.");
+if (doc.qualityGateStatus !== "ready") throw new Error("Gates not ready.");
+if (doc.approvalStatus === "approved" || doc.approvalStatus === "delivered") {
+  throw new Error("Document already approved.");           // guard re-approval
+}
+await ctx.db.patch(documentId, {                           // atomic
+  approvalStatus: "approved",
+  approvedByUserId: user._id,
+  approvedAt: Date.now(),
+  updatedAt: Date.now(),
+});
+```
 
 ### 10.3 Authorization flow (per request)
 
@@ -287,12 +345,20 @@ assertProjectAccess(projectId)            ← Convex = WHAT they may touch
 read/write scoped to the owner's project
 ```
 
-PR-1 applies this to the vertical slice: `saveProjectSnapshot` (stamps/*asserts*
-`ownerUserId`), `listProjects` (scoped via `by_owner`), `getLatestSnapshot`, and
-the approval path (persists approver; human-only). Caller-supplied human
-identity args (`requestedBy`, `author`, `decidedBy`, `overriddenBy`,
-`createdBy`, `approvedBy`) are removed where an authenticated identity is
-derivable from `ctx.auth`.
+PR-1 applies this to the vertical slice: `saveProjectSnapshot` (creates the user
+via `ensureCurrentUser` and stamps `ownerUserId` on new projects; *asserts*
+access on existing ones), `listProjects` (scoped via `by_owner`),
+`getLatestSnapshot` (asserts access), and `approveCompiledDocument` (persists
+approver; human-only).
+
+**Actor-field removal is deliberately narrow in PR-1.** Only the client-supplied
+`approvedBy` argument is removed and replaced by the `ctx.auth`-derived approver,
+because approval is the slice's authority-bearing action. The other
+caller-supplied actor strings (`requestedBy` on `persistCompilation`, `author`
+and `decidedBy` on the review functions, `overriddenBy`, `createdBy`) are **left
+unchanged in this PR** — deriving them touches functions outside the vertical
+slice and would broaden the breaking surface. They are removed in the follow-up
+PRs (plan PR-3) that bring those write paths under identity.
 
 ### 10.4 Migration strategy (explicit — no silent ownership)
 
@@ -300,9 +366,14 @@ Existing `projects` rows have no `ownerUserId`. **Production code must never
 auto-assign ownership** (an unauthenticated row must not silently become some
 caller's property).
 
-- **Development / seed:** a guarded `internalMutation`
-  (`backfillProjectOwner({ projectId, subject })`) that an operator invokes
-  explicitly to assign a known Clerk subject as owner. Never runs automatically.
+- **Development / seed:** a constrained `internalMutation`
+  (`backfillProjectOwner({ projectId, subject })`), invokable only from trusted
+  server context (no public API surface). It is **not** a general owner-setter:
+  it **refuses to overwrite an existing owner** (only acts when `ownerUserId ===
+  undefined`, else throws), and it **requires the target `users` row to already
+  exist** for that `subject` (it does not create identities). It never runs
+  automatically and is intended to be removed once no pre-ownership dev data
+  remains.
 - **Reads of unowned rows:** `assertProjectAccess` treats `ownerUserId ===
   undefined` as **access-denied**, not access-granted — so an un-backfilled row
   is inert, never world-readable.
@@ -314,11 +385,26 @@ caller's property).
 
 ### 10.5 Tests required by PR-1
 
-Unauthenticated access is rejected; cross-project access is rejected (owner-A
-cannot read/write owner-B); owner access succeeds; `listProjects` is
-owner-scoped; an un-backfilled (ownerless) project is inaccessible; and an
-**agent/service principal is rejected from `approveCompiledDocument`**.
+- unauthenticated access (no `ctx.auth` identity) is rejected;
+- cross-project access is rejected (owner-A cannot read/write owner-B);
+- owner access succeeds and `listProjects` returns only the caller's projects;
+- an un-backfilled (ownerless) project is inaccessible;
+- `approveCompiledDocument` re-approval is rejected (single-shot guard);
+- **approval is human-only** — verified by driving it through the actual
+  no-identity path (`ctx.auth.getUserIdentity()` returns `null`, as it does for
+  any `internalMutation`/agent caller) and asserting rejection. **We do not
+  invent an "agent JWT" / fake service-principal identity type** to prove this;
+  the guarantee follows from the fact that non-human callers carry no identity,
+  so the test exercises exactly that absence.
 
-> **Gate:** implementation of §10 does not begin until this ADR revision has had
-> independent architectural review. This section is the "show the proposed
-> schema and authorization flow" deliverable, not an implementation record.
+Because the existing suite is pure-domain (no Convex runtime), these tests
+require a Convex function-test harness. Selecting/adding that harness (e.g.
+`convex-test`) is itself a dependency decision within the gated set and is
+raised for review as part of the PR-1 branch, not assumed here.
+
+> **Gate:** this section is the reviewed PR-1 design of record (independent
+> review passed 2026-07-24, incorporating the corrections in this revision:
+> split `ensureCurrentUser`/`requireAuthenticatedUser`, `{user, project}` return,
+> narrow actor-field removal, atomic single-shot approval, constrained backfill,
+> and identity-absent approval testing). Implementation proceeds on the
+> dedicated identity/auth branch.
