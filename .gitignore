@@ -7,7 +7,9 @@ dist/
 
 # Convex
 .convex/
-convex/_generated/
+# convex/_generated is committed (Convex-recommended) so clients import the typed
+# `api` and the repo typechecks without running codegen first. Regenerate with
+# `bunx convex dev`; never edit generated files by hand.
 
 # Environment
 .env
