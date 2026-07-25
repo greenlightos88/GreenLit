@@ -426,4 +426,84 @@ export default defineSchema({
     status: v.string(),
     createdAt: v.number(),
   }).index("by_project", ["projectId", "severity"]),
+
+  // --- Idea-to-Canon vertical slice (Implementation Milestone 1) -----------
+  // Fragment: preserved source material (CANON.md). Exact source text is never
+  // rewritten by interpretation; every fragment is attributable and immutable
+  // (no update path; sourceVersion fixes the captured version).
+  fragments: defineTable({
+    projectId: v.id("projects"),
+    text: v.string(),
+    sourceType: v.string(),
+    createdByUserId: v.id("users"),
+    provenance: v.optional(v.any()),
+    sourceVersion: v.number(),
+    createdAt: v.number(),
+  }).index("by_project", ["projectId", "createdAt"]),
+
+  // A record of one interpreter run over a fragment (attributable, auditable).
+  interpretationRuns: defineTable({
+    projectId: v.id("projects"),
+    fragmentId: v.id("fragments"),
+    interpreterId: v.string(),
+    interpreterVersion: v.string(),
+    requestedByUserId: v.id("users"),
+    candidateCount: v.number(),
+    createdAt: v.number(),
+  }).index("by_fragment", ["fragmentId", "createdAt"]),
+
+  // Candidate: interpreter output awaiting creator review. NEVER Canon. Every
+  // candidate exposes origin, evidence, explanation, confidence, uncertainty.
+  candidates: defineTable({
+    projectId: v.id("projects"),
+    runId: v.id("interpretationRuns"),
+    fragmentId: v.id("fragments"),
+    candidateType: v.string(),
+    proposedObject: v.any(),
+    explanation: v.string(),
+    evidence: v.array(v.any()),
+    origin: v.union(
+      v.literal("extracted"),
+      v.literal("inferred"),
+      v.literal("generated"),
+    ),
+    confidence: v.number(),
+    uncertainty: v.array(v.string()),
+    // Review lifecycle (CANON.md): decided in Phase 5.
+    status: v.union(
+      v.literal("proposed"),
+      v.literal("approved"),
+      v.literal("edited-approved"),
+      v.literal("rejected"),
+      v.literal("deferred"),
+    ),
+    reviewedByUserId: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.number()),
+    canonEventId: v.optional(v.id("canonEvents")),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId", "createdAt"])
+    .index("by_run", ["runId"])
+    .index("by_project_status", ["projectId", "status"]),
+
+  // Canon Event: the immutable, attributable record of a creator decision on a
+  // candidate (approve / edit-approve / reject / defer). Created in Phase 6.
+  canonEvents: defineTable({
+    projectId: v.id("projects"),
+    candidateId: v.id("candidates"),
+    action: v.union(
+      v.literal("approve"),
+      v.literal("edit-approve"),
+      v.literal("reject"),
+      v.literal("defer"),
+    ),
+    decidedByUserId: v.id("users"),
+    decidedAt: v.number(),
+    note: v.optional(v.string()),
+    // For approvals: the canonical projectObjects row created/versioned.
+    resultingObjectKey: v.optional(v.string()),
+    resultingObjectVersion: v.optional(v.number()),
+  })
+    .index("by_project", ["projectId", "decidedAt"])
+    .index("by_candidate", ["candidateId"]),
 });

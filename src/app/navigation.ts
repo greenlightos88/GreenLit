@@ -3,13 +3,14 @@ import type { IconName } from "@/components/Icon";
 export interface NavigationItem {
   label: string;
   shortLabel: string;
-  to: "/" | "/projects" | "/screenplay" | "/compile" | "/delivery" | "/settings";
+  to: "/" | "/develop" | "/projects" | "/screenplay" | "/compile" | "/delivery" | "/settings";
   icon: IconName;
   description: string;
 }
 
 export const navigationItems: NavigationItem[] = [
   { label: "Home", shortLabel: "Home", to: "/", icon: "home", description: "Project intelligence overview" },
+  { label: "Develop", shortLabel: "Develop", to: "/develop", icon: "compile", description: "Idea to Canon: capture, review, canonize" },
   { label: "Projects", shortLabel: "Projects", to: "/projects", icon: "projects", description: "Manage creative workspaces" },
   { label: "Screenplay", shortLabel: "Script", to: "/screenplay", icon: "script", description: "Write and validate scenes" },
   { label: "Compilation", shortLabel: "Compile", to: "/compile", icon: "compile", description: "Build professional packages" },

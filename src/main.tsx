@@ -13,6 +13,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import App from "./App";
 import { AppShell } from "./app/AppShell";
 import { OverviewPage } from "./pages/OverviewPage";
+import { DevelopPage } from "./pages/DevelopPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { ScreenplayPage } from "./pages/ScreenplayPage";
 import { DeliveryPage } from "./pages/DeliveryPage";
@@ -33,6 +34,11 @@ const overviewRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: OverviewPage,
+});
+const developRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/develop",
+  component: DevelopPage,
 });
 const projectsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -61,6 +67,7 @@ const settingsRoute = createRoute({
 });
 const routeTree = rootRoute.addChildren([
   overviewRoute,
+  developRoute,
   projectsRoute,
   screenplayRoute,
   chamberRoute,
