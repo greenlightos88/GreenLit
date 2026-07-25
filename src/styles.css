@@ -534,3 +534,28 @@ kbd { padding: 2px 5px; border: 1px solid var(--line); border-radius: 3px; backg
 .auth-screen h1 { margin: 0; }
 .auth-message { max-width: 32rem; opacity: 0.8; }
 .auth-actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
+
+/* Idea-to-Canon develop workspace */
+.develop-page { max-width: 60rem; margin: 0 auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+.develop-header h1 { margin: 0; }
+.develop-project-row { display: flex; gap: 0.75rem; align-items: end; margin-top: 0.75rem; }
+.develop-card { border: 1px solid var(--hairline, #e5e0d8); border-radius: 0.75rem; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.develop-card h2 { margin: 0; font-size: 1.05rem; }
+.develop-card textarea, .develop-card input, .develop-card select { width: 100%; padding: 0.5rem; border: 1px solid var(--hairline, #e5e0d8); border-radius: 0.5rem; font: inherit; }
+.develop-actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+.candidate-card { border: 1px solid var(--hairline, #e5e0d8); border-radius: 0.6rem; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.candidate-head { display: flex; gap: 0.6rem; align-items: baseline; }
+.candidate-head strong { text-transform: capitalize; }
+.candidate-origin, .candidate-confidence { font-size: 0.8rem; opacity: 0.7; }
+.candidate-explanation { margin: 0; }
+.candidate-field { display: grid; grid-template-columns: 8rem 1fr; gap: 0.5rem; align-items: center; font-size: 0.9rem; }
+.candidate-field span { text-transform: capitalize; opacity: 0.75; }
+.candidate-uncertainty { margin: 0; padding-left: 1.1rem; font-size: 0.85rem; opacity: 0.8; }
+.candidate-evidence blockquote { margin: 0.25rem 0; padding-left: 0.75rem; border-left: 2px solid var(--accent, #b8763e); font-style: italic; opacity: 0.85; }
+.canon-summary { margin: 0; padding-left: 1.1rem; }
+.canon-summary strong { text-transform: capitalize; }
+.compiled-section { border-top: 1px solid var(--hairline, #e5e0d8); padding-top: 0.75rem; }
+.compiled-section h3 { margin: 0 0 0.4rem; }
+.provenance { font-size: 0.78rem; opacity: 0.65; }
+.inference-tag { opacity: 0.6; }
+.muted { opacity: 0.65; }
