@@ -1,6 +1,25 @@
-# GreenlightOS
+# GreenLight OS
 
-GreenlightOS turns a living creative project graph into a traceable screenplay, studio bible, production breakdown, department packet, and versioned delivery artifact. The first runnable milestone is the **Compilation Chamber**: a structured document workspace backed by the same pure compiler modules used by exports and Convex persistence.
+**From Spark to Screen.**
+
+GreenLight is a Creative Intelligence Operating System that transforms raw creative intent into creator-owned, production-ready intellectual property. It gives a creator the adaptive capabilities of a writing room, development team, production office, packaging team, and delivery system while preserving the creator as the sole author of project truth.
+
+GreenLight begins with Fragments, interprets them into evidence-linked Candidates, requires creator approval before anything becomes Canon, and compiles immutable Canon snapshots into professional artifacts.
+
+The current runnable milestone proves the compiler, provenance, delivery, authentication, authorization, and product-shell foundations. The next vertical slice connects live creative input to interpretation, creator review, Canon approval, and professional compilation.
+
+## Governing documents
+
+- [Constitution](./CONSTITUTION.md)
+- [Vision](./VISION.md)
+- [Architecture](./docs/ARCHITECTURE.md)
+- [Kernel](./KERNEL.md)
+- [Intelligence](./INTELLIGENCE.md)
+- [Canon](./CANON.md)
+- [Compiler](./COMPILER.md)
+- [UX Principles](./UX_PRINCIPLES.md)
+- [Roadmap](./ROADMAP.md)
+- [Known limitations](./docs/KNOWN_LIMITATIONS.md)
 
 ## Quick start
 
