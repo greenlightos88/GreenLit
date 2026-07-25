@@ -426,4 +426,18 @@ export default defineSchema({
     status: v.string(),
     createdAt: v.number(),
   }).index("by_project", ["projectId", "severity"]),
+
+  // --- Idea-to-Canon vertical slice (Implementation Milestone 1) -----------
+  // Fragment: preserved source material (CANON.md). Exact source text is never
+  // rewritten by interpretation; every fragment is attributable and immutable
+  // (no update path; sourceVersion fixes the captured version).
+  fragments: defineTable({
+    projectId: v.id("projects"),
+    text: v.string(),
+    sourceType: v.string(),
+    createdByUserId: v.id("users"),
+    provenance: v.optional(v.any()),
+    sourceVersion: v.number(),
+    createdAt: v.number(),
+  }).index("by_project", ["projectId", "createdAt"]),
 });

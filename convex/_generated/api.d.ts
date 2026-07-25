@@ -28,6 +28,7 @@ import type * as domain_screenplay_fountain from "../domain/screenplay/fountain.
 import type * as domain_screenplay_types from "../domain/screenplay/types.js";
 import type * as domain_screenplay_validate from "../domain/screenplay/validate.js";
 import type * as exports from "../exports.js";
+import type * as fragments from "../fragments.js";
 import type * as identity from "../identity.js";
 import type * as projects from "../projects.js";
 import type * as quality from "../quality.js";
@@ -61,6 +62,7 @@ declare const fullApi: ApiFromModules<{
   "domain/screenplay/types": typeof domain_screenplay_types;
   "domain/screenplay/validate": typeof domain_screenplay_validate;
   exports: typeof exports;
+  fragments: typeof fragments;
   identity: typeof identity;
   projects: typeof projects;
   quality: typeof quality;
