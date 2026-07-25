@@ -1,4 +1,50 @@
-# Production Intelligence Compiler architecture
+# GreenLight OS Architecture
+
+GreenLight is a Creative Intelligence Operating System. The Production Intelligence Compiler is a downstream subsystem within a larger authorship-preserving lifecycle.
+
+## System flow
+
+```text
+Creative Intent
+      ↓
+Creative Aperture
+      ↓
+Fragments
+      ↓
+Interpreter Interface
+      ↓
+Candidate Proposal Graph
+      ↓
+Explanation + Evidence
+      ↓
+Creator Review
+      ↓
+Approved Canon
+      ↓
+Immutable Canon Snapshot
+      ↓
+Compilers + Production Intelligence
+      ↓
+Professional Deliverables
+      ↓
+Delivery + Feedback
+```
+
+## System boundaries
+
+- Creative Aperture preserves source material before interpretation.
+- Interpreter implementations are replaceable behind a stable interface.
+- Proposal review and Canon persistence cannot depend on interpreter type.
+- Candidates remain explicitly non-canonical review state.
+- `ProjectObject` remains the durable polymorphic domain model unless a future ADR proves a replacement is necessary.
+- Convex owns durable project truth.
+- Zustand owns ephemeral interface state.
+- Compiler builders consume immutable Canon snapshots.
+- Intelligence domains advise; they never own project truth.
+- Graphiti is outside the operational truth path and is not part of the current milestone.
+- A separate Intent subsystem is not introduced without a proven architectural requirement.
+
+## Production Intelligence Compiler
 
 ## Invariants
 
