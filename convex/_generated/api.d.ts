@@ -22,6 +22,8 @@ import type * as domain_delivery_reviewNotes from "../domain/delivery/reviewNote
 import type * as domain_delivery_types from "../domain/delivery/types.js";
 import type * as domain_graph_canon from "../domain/graph/canon.js";
 import type * as domain_graph_types from "../domain/graph/types.js";
+import type * as domain_interpret_deterministic from "../domain/interpret/deterministic.js";
+import type * as domain_interpret_types from "../domain/interpret/types.js";
 import type * as domain_screenplay_compile from "../domain/screenplay/compile.js";
 import type * as domain_screenplay_fdx from "../domain/screenplay/fdx.js";
 import type * as domain_screenplay_fountain from "../domain/screenplay/fountain.js";
@@ -30,6 +32,7 @@ import type * as domain_screenplay_validate from "../domain/screenplay/validate.
 import type * as exports from "../exports.js";
 import type * as fragments from "../fragments.js";
 import type * as identity from "../identity.js";
+import type * as interpret from "../interpret.js";
 import type * as projects from "../projects.js";
 import type * as quality from "../quality.js";
 import type * as reviews from "../reviews.js";
@@ -56,6 +59,8 @@ declare const fullApi: ApiFromModules<{
   "domain/delivery/types": typeof domain_delivery_types;
   "domain/graph/canon": typeof domain_graph_canon;
   "domain/graph/types": typeof domain_graph_types;
+  "domain/interpret/deterministic": typeof domain_interpret_deterministic;
+  "domain/interpret/types": typeof domain_interpret_types;
   "domain/screenplay/compile": typeof domain_screenplay_compile;
   "domain/screenplay/fdx": typeof domain_screenplay_fdx;
   "domain/screenplay/fountain": typeof domain_screenplay_fountain;
@@ -64,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   exports: typeof exports;
   fragments: typeof fragments;
   identity: typeof identity;
+  interpret: typeof interpret;
   projects: typeof projects;
   quality: typeof quality;
   reviews: typeof reviews;
