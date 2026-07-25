@@ -38,6 +38,7 @@ import type * as interpret from "../interpret.js";
 import type * as projects from "../projects.js";
 import type * as quality from "../quality.js";
 import type * as reviews from "../reviews.js";
+import type * as snapshot from "../snapshot.js";
 import type * as users from "../users.js";
 
 import type {
@@ -77,6 +78,7 @@ declare const fullApi: ApiFromModules<{
   projects: typeof projects;
   quality: typeof quality;
   reviews: typeof reviews;
+  snapshot: typeof snapshot;
   users: typeof users;
 }>;
 
