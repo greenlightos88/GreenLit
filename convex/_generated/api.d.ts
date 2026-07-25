@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as canon from "../canon.js";
 import type * as compilerPersistence from "../compilerPersistence.js";
 import type * as domain_compiler_breakdown from "../domain/compiler/breakdown.js";
 import type * as domain_compiler_builders from "../domain/compiler/builders.js";
@@ -22,6 +23,7 @@ import type * as domain_delivery_reviewNotes from "../domain/delivery/reviewNote
 import type * as domain_delivery_types from "../domain/delivery/types.js";
 import type * as domain_graph_canon from "../domain/graph/canon.js";
 import type * as domain_graph_types from "../domain/graph/types.js";
+import type * as domain_interpret_canonize from "../domain/interpret/canonize.js";
 import type * as domain_interpret_deterministic from "../domain/interpret/deterministic.js";
 import type * as domain_interpret_types from "../domain/interpret/types.js";
 import type * as domain_screenplay_compile from "../domain/screenplay/compile.js";
@@ -45,6 +47,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  canon: typeof canon;
   compilerPersistence: typeof compilerPersistence;
   "domain/compiler/breakdown": typeof domain_compiler_breakdown;
   "domain/compiler/builders": typeof domain_compiler_builders;
@@ -59,6 +62,7 @@ declare const fullApi: ApiFromModules<{
   "domain/delivery/types": typeof domain_delivery_types;
   "domain/graph/canon": typeof domain_graph_canon;
   "domain/graph/types": typeof domain_graph_types;
+  "domain/interpret/canonize": typeof domain_interpret_canonize;
   "domain/interpret/deterministic": typeof domain_interpret_deterministic;
   "domain/interpret/types": typeof domain_interpret_types;
   "domain/screenplay/compile": typeof domain_screenplay_compile;
