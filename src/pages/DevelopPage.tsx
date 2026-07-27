@@ -5,7 +5,11 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { compileDocument } from "@domain/compiler/compose";
 import { getProfile } from "@domain/compiler/profiles";
 import { visibleBlocks } from "@domain/compiler/compose";
+import type { ContentBlock } from "@domain/compiler/types";
 import type { CanonSnapshot } from "@domain/graph/types";
+
+/** The profile every explicit compile targets in the vertical slice. */
+const COMPILE_PROFILE = "pitch-document";
 
 /**
  * Idea-to-Canon workspace (Implementation Milestone 1, Phase 9).
@@ -40,6 +44,7 @@ export function DevelopPage() {
   const runInterpretation = useMutation(api.interpret.runInterpretation);
   const decideCandidate = useMutation(api.canon.decideCandidate);
   const createSnapshot = useMutation(api.snapshot.createCanonSnapshot);
+  const compileSnapshot = useMutation(api.compilerPersistence.compileSnapshot);
 
   const candidates = useQuery(
     api.interpret.listCandidates,
@@ -55,6 +60,7 @@ export function DevelopPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [edits, setEdits] = useState<Record<string, StringMap>>({});
   const [snapshotId, setSnapshotId] = useState<Id<"canonSnapshots"> | null>(null);
+  const [documentId, setDocumentId] = useState<Id<"compiledDocuments"> | null>(null);
 
   const proposed = (candidates ?? []).filter((c) => c.status === "proposed");
 
@@ -95,8 +101,15 @@ export function DevelopPage() {
   async function snapshotAndPrepare() {
     if (!activeProjectId) return;
     setBusy("snapshot");
+    // Freeze the approved Canon, then run the AUTHORITATIVE server compile: the
+    // durable document is produced and persisted by Convex, not the browser.
     const { snapshotId: id } = await createSnapshot({ projectId: activeProjectId, label: "v1" });
     setSnapshotId(id as Id<"canonSnapshots">);
+    const { documentId: docId } = await compileSnapshot({
+      snapshotId: id as Id<"canonSnapshots">,
+      profileKey: COMPILE_PROFILE,
+    });
+    setDocumentId(docId as Id<"compiledDocuments">);
     setBusy(null);
   }
 
@@ -234,8 +247,10 @@ export function DevelopPage() {
             </div>
           </section>
 
-          {/* 7/8. Compiled artifact with provenance */}
-          {snapshotId ? <CompiledPreview snapshotId={snapshotId} /> : null}
+          {/* 7/8. Authoritative compiled artifact (persisted by the server). */}
+          {documentId ? <CompiledArtifact documentId={documentId} /> : null}
+          {/* Ephemeral, non-authoritative client preview — labeled as such. */}
+          {snapshotId ? <EphemeralPreview snapshotId={snapshotId} /> : null}
         </>
       ) : (
         <section className="develop-card">
@@ -247,7 +262,68 @@ export function DevelopPage() {
   );
 }
 
-function CompiledPreview({ snapshotId }: { snapshotId: Id<"canonSnapshots"> }) {
+/**
+ * The AUTHORITATIVE compiled artifact: produced and persisted server-side by the
+ * durable compilation pipeline, then read back by document id. This is the real
+ * result — provenance, warnings, gate status, and snapshot identity all come
+ * from Convex, not from a browser compile.
+ */
+function CompiledArtifact({ documentId }: { documentId: Id<"compiledDocuments"> }) {
+  const result = useQuery(api.compilerPersistence.getCompiledDocument, { documentId });
+
+  if (result === undefined) {
+    return <section className="develop-card"><p>Compiling on the server…</p></section>;
+  }
+  if (result === null) {
+    return <section className="develop-card"><p>Compiled artifact not found.</p></section>;
+  }
+  const { document, sections, warnings, snapshot } = result;
+  const typedSections = sections as unknown as Array<{
+    _id: string;
+    title: string;
+    generatedProse: ContentBlock[];
+    sources: Array<{ sourceObjectKey: string }>;
+  }>;
+
+  return (
+    <section className="develop-card">
+      <h2>4 · Compiled artifact — {String(document.title)}</h2>
+      <p className="muted">
+        Authoritative server compilation · gate status {String(document.qualityGateStatus)}
+        {snapshot ? ` · from snapshot ${String(snapshot.id)}` : ""}
+      </p>
+      {warnings.length > 0 ? (
+        <ul className="compiled-warnings">
+          {warnings.map((w, i: number) => <li key={i}>{String(w.issue)}</li>)}
+        </ul>
+      ) : null}
+      {typedSections.map((s) => (
+        <article className="compiled-section" key={String(s._id)}>
+          <h3>{String(s.title)}</h3>
+          {s.generatedProse.map((b, i) => (
+            <p key={i}>
+              {b.label ? <strong>{b.label}: </strong> : null}
+              {b.text}
+              {b.inference ? <em className="inference-tag"> (inference)</em> : null}
+            </p>
+          ))}
+          {s.sources.length > 0 ? (
+            <p className="provenance">
+              Sources: {s.sources.map((r) => String(r.sourceObjectKey)).join(", ")}
+            </p>
+          ) : null}
+        </article>
+      ))}
+    </section>
+  );
+}
+
+/**
+ * Ephemeral, NON-authoritative preview: a pure client-side compile of the same
+ * snapshot for instant feedback. It is never persisted and never delivered — the
+ * server artifact above is the source of truth.
+ */
+function EphemeralPreview({ snapshotId }: { snapshotId: Id<"canonSnapshots"> }) {
   const snap = useQuery(api.snapshot.getCanonSnapshot, { snapshotId });
   const document = useMemo(() => {
     if (!snap) return null;
@@ -259,7 +335,7 @@ function CompiledPreview({ snapshotId }: { snapshotId: Id<"canonSnapshots"> }) {
       objects: snap.objects,
       createdAt: snap.createdAt,
     } as unknown as CanonSnapshot;
-    const profile = getProfile("pitch-document");
+    const profile = getProfile(COMPILE_PROFILE);
     return profile ? compileDocument(snapshot, profile, { now: snap.createdAt }) : null;
   }, [snap, snapshotId]);
 
@@ -267,8 +343,12 @@ function CompiledPreview({ snapshotId }: { snapshotId: Id<"canonSnapshots"> }) {
   if (!document) return <section className="develop-card"><p>Nothing to compile.</p></section>;
 
   return (
-    <section className="develop-card">
-      <h2>4 · Compiled artifact — {document.title}</h2>
+    <section className="develop-card develop-card-ephemeral">
+      <h2>Ephemeral preview (not persisted)</h2>
+      <p className="muted">
+        Instant client-side preview only. The authoritative artifact above is the
+        persisted server compilation.
+      </p>
       {document.missingSections.length > 0 ? (
         <p className="muted">Missing (visible gaps): {document.missingSections.join(", ")}</p>
       ) : null}
