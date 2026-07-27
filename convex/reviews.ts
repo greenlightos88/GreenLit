@@ -1,5 +1,42 @@
 import { mutationGeneric as mutation, queryGeneric as query } from "convex/server";
 import { v } from "convex/values";
+import type { GenericId } from "convex/values";
+import { assertProjectAccess } from "./identity";
+
+/**
+ * Delivery-room review notes (ADR-0002 §10).
+ *
+ * Every function here is owner-authorized against the project that owns the
+ * document version the note targets. The ownership chain is:
+ *   reviewNote → documentVersion → compiledDocument → project (owner).
+ * Authorship of a creator decision (`decidedBy`) is derived from the
+ * authenticated identity, never accepted from the client.
+ *
+ * Note on external recipients: a review note's `author`/`source` are descriptive
+ * content — the external reviewer being transcribed — not an authorization
+ * identity. Today only the owning creator may read or write these notes. A
+ * future external-recipient portal (recipients are NOT `users`, ADR-0002) would
+ * add a separate room-scoped access path; that recipient-authorization model is
+ * a distinct, unapproved design decision and is intentionally not built here.
+ */
+
+/** Resolve the project that owns a document version and authorize the caller. */
+async function assertDocumentVersionAccess(
+  ctx: Parameters<typeof assertProjectAccess>[0],
+  documentVersionId: GenericId<"documentVersions">,
+) {
+  const documentVersion = await ctx.db.get(documentVersionId);
+  if (!documentVersion) throw new Error("Document version not found.");
+  const document = await ctx.db.get(
+    documentVersion.documentId as GenericId<"compiledDocuments">,
+  );
+  if (!document) throw new Error("Compiled document not found.");
+  const access = await assertProjectAccess(
+    ctx,
+    document.sourceProject as GenericId<"projects">,
+  );
+  return { ...access, documentVersion, document };
+}
 
 export const recordReviewNote = mutation({
   args: {
@@ -19,6 +56,15 @@ export const recordReviewNote = mutation({
     targetObjectKeys: v.array(v.string()),
   },
   handler: async (ctx, args) => {
+    const { project } = await assertDocumentVersionAccess(ctx, args.documentVersionId);
+    // If a room is supplied it must belong to the same authorized project, so a
+    // note can never be cross-linked into another project's room.
+    if (args.roomId !== undefined) {
+      const room = await ctx.db.get(args.roomId);
+      if (!room || room.projectId !== project._id) {
+        throw new Error("Delivery room does not belong to this project.");
+      }
+    }
     const noteId = await ctx.db.insert("reviewNotes", {
       roomId: args.roomId,
       author: args.author,
@@ -50,11 +96,15 @@ export const decideReviewNote = mutation({
     response: v.optional(v.string()),
     resultingDecisionKey: v.optional(v.string()),
     resultingArtifactVersion: v.optional(v.string()),
-    decidedBy: v.string(),
   },
   handler: async (ctx, args) => {
     const note = await ctx.db.get(args.reviewNoteId);
     if (!note) throw new Error("Review note not found.");
+    // Authorize against the owning project; derive the decider from identity.
+    const { user } = await assertDocumentVersionAccess(
+      ctx,
+      note.documentVersionId as GenericId<"documentVersions">,
+    );
     const decidedAt = Date.now();
     const decisionId = await ctx.db.insert("reviewDecisions", {
       reviewNoteId: args.reviewNoteId,
@@ -62,7 +112,7 @@ export const decideReviewNote = mutation({
       response: args.response,
       resultingDecisionKey: args.resultingDecisionKey,
       resultingArtifactVersion: args.resultingArtifactVersion,
-      decidedBy: args.decidedBy,
+      decidedBy: String(user._id),
       decidedAt,
     });
     await ctx.db.patch(args.reviewNoteId, {
@@ -75,11 +125,13 @@ export const decideReviewNote = mutation({
 
 export const listReviewNotes = query({
   args: { documentVersionId: v.id("documentVersions") },
-  handler: async (ctx, { documentVersionId }) =>
-    ctx.db
+  handler: async (ctx, { documentVersionId }) => {
+    await assertDocumentVersionAccess(ctx, documentVersionId);
+    return ctx.db
       .query("reviewNotes")
       .withIndex("by_document_version", (q) =>
         q.eq("documentVersionId", documentVersionId),
       )
-      .collect(),
+      .collect();
+  },
 });

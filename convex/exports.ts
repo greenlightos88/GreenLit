@@ -1,5 +1,21 @@
-import { mutationGeneric as mutation } from "convex/server";
+import {
+  internalMutationGeneric as internalMutation,
+  mutationGeneric as mutation,
+} from "convex/server";
 import { v } from "convex/values";
+import type { GenericId } from "convex/values";
+import { assertProjectAccess } from "./identity";
+
+/**
+ * Export pipeline (ADR-0002 §10).
+ *
+ * `queueExport` is a creator action: it is owner-authorized against the project
+ * that owns the compiled document. `completeExport` is a service-side completion
+ * that records a generated file and marks the job succeeded; it carries a
+ * storage id produced by server-side generation and is therefore an
+ * internalMutation — not part of the public API surface, so no external caller
+ * can forge an export completion.
+ */
 
 export const queueExport = mutation({
   args: {
@@ -7,17 +23,21 @@ export const queueExport = mutation({
     format: v.string(),
     options: v.optional(v.any()),
   },
-  handler: async (ctx, args) =>
-    ctx.db.insert("exportJobs", {
+  handler: async (ctx, args) => {
+    const document = await ctx.db.get(args.documentId);
+    if (!document) throw new Error("Compiled document not found.");
+    await assertProjectAccess(ctx, document.sourceProject as GenericId<"projects">);
+    return ctx.db.insert("exportJobs", {
       documentId: args.documentId,
       format: args.format,
       status: "queued",
       options: args.options,
       requestedAt: Date.now(),
-    }),
+    });
+  },
 });
 
-export const completeExport = mutation({
+export const completeExport = internalMutation({
   args: {
     exportJobId: v.id("exportJobs"),
     storageId: v.id("_storage"),
@@ -42,7 +62,7 @@ export const completeExport = mutation({
       status: "succeeded",
       completedAt: Date.now(),
     });
-    await ctx.db.patch(job.documentId, {
+    await ctx.db.patch(job.documentId as GenericId<"compiledDocuments">, {
       exportStatus: "exported",
       updatedAt: Date.now(),
     });
