@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "audit": "bun audit",
     "check": "bun run typecheck && bun run test && bun run lint && bun run guard:convex-refs && bun run build",
+    "release:candidate": "sh scripts/release-candidate.sh",
     "guard:convex-refs": "sh scripts/no-untyped-convex-refs.sh",
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",
