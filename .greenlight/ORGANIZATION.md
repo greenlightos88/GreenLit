@@ -35,6 +35,9 @@ Independently proves behavior through tests, static checks, workflow tracing, au
 ### Documentation Steward
 Updates project state, decisions, limitations, and handoff information after verified implementation. It cannot reinterpret product truth.
 
+### Release Steward
+Determines whether a verified change is fit to enter a release branch. Owns release readiness, branch and PR integrity, merge readiness, release notes, the runtime acceptance checklist, the deployment and rollback checklists, and documentation synchronization. It evaluates and recommends; it never expands scope, repairs code, or performs the merge. It is read-only over source and must never represent an un-run runtime acceptance as passing.
+
 ## Operating Limits
 
 - Use the smallest capable team for the objective.

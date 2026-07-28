@@ -4,6 +4,20 @@
 
 This document is the operational memory of the repository. It records observed state, not aspiration. Update it at the end of every milestone or when an active pull request materially changes repository state.
 
+## Release infrastructure
+
+A permanent Release Candidate pipeline governs how changes reach `master`:
+Developer → Static Verification → CI → Runtime Acceptance → Release Steward → Merge.
+
+- Pipeline definition: `docs/release/RELEASE_CANDIDATE_WORKFLOW.md`.
+- Reusable gate: `scripts/release-candidate.sh` (`bun run release:candidate`) runs static verification + audit and enforces a per-commit runtime-acceptance sign-off; `--ci` mode runs the static gate in `.github/workflows/release-candidate.yml`.
+- Reusable runtime gate: `docs/release/RUNTIME_ACCEPTANCE_CHECKLIST.md`, executed against a real environment set up per `docs/release/RUNTIME_ENVIRONMENT.md`, recorded under `docs/release/signoff/<sha>.md`.
+- Release Steward is the seventh engineering specialist (`.claude/agents/release-steward.md`), registered in `.greenlight/ORGANIZATION.md`.
+
+### PR #17 runtime status
+
+PR #17's code candidate (`feat/develop-persisted-rehydration` @ `c57fe93`, the creator's own `popstate` fix) passes static verification (`bun run check`) and `bun run audit`. Runtime acceptance remains **PENDING**: this environment has no Clerk application and cannot download the Convex local backend through its egress proxy, so the authenticated `/develop` workflow cannot be exercised here. Runtime acceptance must be run per the checklist in a credentialed environment before merge.
+
 ## Product position
 
 GreenLit is a creator-owned Creative Intelligence Operating System. Its core truth flow is:

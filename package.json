@@ -14,6 +14,7 @@
     "audit": "bun audit",
     "check": "bun run typecheck && bun run test && bun run lint && bun run guard:convex-refs && bun run build",
     "guard:convex-refs": "sh scripts/no-untyped-convex-refs.sh",
+    "release:candidate": "sh scripts/release-candidate.sh",
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",
     "convex:codegen": "convex codegen"
