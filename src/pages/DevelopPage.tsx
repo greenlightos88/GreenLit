@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -42,6 +42,17 @@ function errorMessage(error: unknown): string {
  * it is never trusted for authorization. Convex validates ownership server-side.
  */
 export function DevelopPage() {
+  // Re-read the URL when history navigation (back/forward) or a programmatic
+  // selection dispatches `popstate`. `requestedProjectId` is derived from
+  // `window.location` during render, so a forced re-render rehydrates the
+  // project the URL now points at. Convex remains the authority; the URL only
+  // carries the navigation target.
+  const [, syncLocation] = useReducer((tick: number) => tick + 1, 0);
+  useEffect(() => {
+    window.addEventListener("popstate", syncLocation);
+    return () => window.removeEventListener("popstate", syncLocation);
+  }, [syncLocation]);
+
   const projects = useQuery(api.projects.listProjects);
   const requestedProjectId = projectFromLocation();
   const requestedProject = projects?.find((project) => project._id === requestedProjectId);
