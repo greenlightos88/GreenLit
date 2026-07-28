@@ -30,6 +30,24 @@ Before editing code:
 9. Implement only the approved milestone scope.
 10. Run all applicable verification before reporting completion.
 
+## Multi-agent operating model
+
+Claude is the lead orchestrator. The repository-owned organization and execution rules are defined in:
+
+- `.greenlight/ORGANIZATION.md`
+- `.greenlight/EXECUTION_MODEL.md`
+- `.greenlight/protocols/DELEGATION.md`
+- `.greenlight/protocols/VERIFICATION.md`
+- `.greenlight/protocols/CONTEXT_BUDGET.md`
+
+Project subagents are defined in `.claude/agents/`.
+
+Delegate only when specialization, independent discovery, parallelism, or independent verification materially improves the objective. Use the smallest capable team, normally one to three specialists. Never create overlapping parallel write sets or delegate a task that cannot be bounded.
+
+Every delegation must specify one observable objective, governing authority, exact inputs, allowed write paths, prohibited actions, required evidence, return format, and stop conditions. The lead remains accountable for reviewing results, integrating changes, resolving conflicts, verifying the complete workflow, and reporting honestly.
+
+Persistent memory may help locate prior work but is never authoritative. Retrieve repository evidence before reasoning from historical summaries.
+
 ## Non-negotiable product invariants
 
 - The creator remains the sole authority over project truth.
