@@ -42,8 +42,8 @@ function errorMessage(error: unknown): string {
  * it is never trusted for authorization. Convex validates ownership server-side.
  */
 export function DevelopPage() {
+  const [requestedProjectId, setRequestedProjectId] = useState<Id<"projects"> | null>(projectFromLocation);
   const projects = useQuery(api.projects.listProjects);
-  const requestedProjectId = projectFromLocation();
   const requestedProject = projects?.find((project) => project._id === requestedProjectId);
   const activeProjectId = requestedProject?._id ?? projects?.[0]?._id ?? null;
 
@@ -74,8 +74,20 @@ export function DevelopPage() {
   const [edits, setEdits] = useState<Record<string, StringMap>>({});
 
   useEffect(() => {
+    function handlePopState() {
+      setRequestedProjectId(projectFromLocation());
+      setEdits({});
+      setError(null);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
     if (activeProjectId && requestedProjectId !== activeProjectId) {
       writeProjectToLocation(activeProjectId);
+      setRequestedProjectId(activeProjectId);
     }
   }, [activeProjectId, requestedProjectId]);
 
@@ -98,9 +110,9 @@ export function DevelopPage() {
 
   function selectProject(projectId: Id<"projects">) {
     writeProjectToLocation(projectId);
+    setRequestedProjectId(projectId);
     setEdits({});
     setError(null);
-    window.dispatchEvent(new PopStateEvent("popstate"));
   }
 
   async function createProject() {
