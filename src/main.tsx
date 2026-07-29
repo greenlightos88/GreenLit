@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { ClerkProvider, useAuth } from "@clerk/react";
+import { ClerkProvider } from "@clerk/react";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import App from "./App";
@@ -21,6 +21,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { readAuthConfig } from "./auth/config";
 import { AuthBoundary } from "./auth/AuthBoundary";
 import { ConfigError } from "./auth/ConfigError";
+import { useAuthForConvex } from "./auth/useAuthForConvex";
 import "./styles.css";
 
 const queryClient = new QueryClient({
@@ -102,7 +103,7 @@ try {
   root.render(
     <StrictMode>
       <ClerkProvider publishableKey={config.clerkPublishableKey} afterSignOutUrl="/">
-        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+        <ConvexProviderWithClerk client={convex} useAuth={useAuthForConvex}>
           <AuthBoundary>
             <ApplicationProviders />
           </AuthBoundary>
