@@ -25,10 +25,14 @@ Before editing code:
 4. Read the governing product documents relevant to the task.
 5. Read `docs/governance/CLAUDE_OPERATING_CONTRACT.md`.
 6. Consult `docs/governance/ENGINEERING_PLAYBOOK.md` for implementation and verification procedure.
-7. Inspect the actual code, tests, open issue, and active pull request before forming conclusions.
-8. Produce a bounded implementation plan.
-9. Implement only the approved milestone scope.
-10. Run all applicable verification before reporting completion.
+7. Inspect the actual code, tests, open issue, active pull request, and current branch before forming conclusions.
+8. Produce the mandatory session report using `docs/governance/SESSION_REPORT_TEMPLATE.md`.
+9. In that report, declare the objective, evidence inspected, governing constraints, model/delegation decision, bounded write set, verification plan, out-of-scope work, and stop conditions.
+10. Do not edit until the report demonstrates that the task is understood and bounded. Continue without a second approval only when the creator already explicitly authorized execution.
+11. Implement only the authorized milestone scope.
+12. Run all applicable verification before reporting completion.
+
+The session report is not ceremony. It is the observable proof that Claude loaded the current repository, chose the smallest capable execution strategy, and is not relying on stale memory.
 
 ## Multi-agent operating model
 
@@ -71,7 +75,7 @@ When uncertain: inspect first, state the uncertainty, choose the smallest revers
 Do not say work is complete unless:
 
 - the requested workflow works end to end;
-- typecheck, tests, lint, build, and audit pass where applicable;
+- typecheck, tests, lint, build, governance guard, and audit pass where applicable;
 - authorization and persistence behavior have been verified;
 - documentation and project status are accurate;
 - remaining risks and technical debt are stated honestly.
