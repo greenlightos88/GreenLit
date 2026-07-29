@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { ContentBlock } from "@domain/compiler/types";
+import { projectFromSearch, resolveActiveProject } from "./projectRouting";
 
 const COMPILE_PROFILE = "pitch-document";
-const PROJECT_QUERY_KEY = "project";
 
 type StringMap = Record<string, string>;
 
@@ -19,26 +20,26 @@ function stringFields(obj: unknown): StringMap {
   return out;
 }
 
-function projectFromLocation(): Id<"projects"> | null {
-  if (typeof window === "undefined") return null;
-  return new URLSearchParams(window.location.search).get(PROJECT_QUERY_KEY) as Id<"projects"> | null;
-}
-
-function writeProjectToLocation(projectId: Id<"projects">) {
-  const url = new URL(window.location.href);
-  url.searchParams.set(PROJECT_QUERY_KEY, projectId);
-  window.history.replaceState(null, "", url);
-}
-
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "The operation failed. Please try again.";
 }
 
+/**
+ * Persistence-backed creator workspace.
+ *
+ * Durable project, Candidate, Canon, snapshot, and compilation state comes only
+ * from owner-authorized Convex APIs. The `/develop?project=<id>` search param is
+ * router-owned navigation state and is never trusted for authorization; Convex
+ * validates ownership server-side, so an unavailable or unauthorized id can
+ * never become the active project.
+ */
 export function DevelopPage() {
-  const [requestedProjectId, setRequestedProjectId] = useState<Id<"projects"> | null>(projectFromLocation);
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as { project?: string };
+  const requestedProjectId = projectFromSearch(search);
+
   const projects = useQuery(api.projects.listProjects);
-  const requestedProject = projects?.find((project) => project._id === requestedProjectId);
-  const activeProjectId = requestedProject?._id ?? projects?.[0]?._id ?? null;
+  const { activeProjectId, requestedUnavailable } = resolveActiveProject(projects, requestedProjectId);
   const activeProject = projects?.find((project) => project._id === activeProjectId);
 
   const saveProject = useMutation(api.projects.saveProjectSnapshot);
@@ -57,23 +58,27 @@ export function DevelopPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [edits, setEdits] = useState<Record<string, StringMap>>({});
+  const [unavailableNotice, setUnavailableNotice] = useState(false);
+  const createdProjectId = useRef<Id<"projects"> | null>(null);
 
+  // Keep the URL router-owned. When the active project differs from the
+  // requested one (first load, or a requested project that is unavailable),
+  // correct the URL in place without adding a history entry. A just-created
+  // project is exempt until it appears in the authorized list.
   useEffect(() => {
-    function handlePopState() {
-      setRequestedProjectId(projectFromLocation());
-      setEdits({});
-      setError(null);
-    }
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+    if (!activeProjectId || requestedProjectId === activeProjectId) return;
+    if (requestedProjectId && requestedProjectId === createdProjectId.current) return;
+    navigate({ to: "/develop", search: { project: activeProjectId }, replace: true });
+  }, [activeProjectId, requestedProjectId, navigate]);
 
+  // Surface, and keep visible, that a requested project was unavailable — even
+  // after the URL is corrected to the fallback project. A just-created project
+  // that has not yet reached the authorized list is not "unavailable".
   useEffect(() => {
-    if (activeProjectId && requestedProjectId !== activeProjectId) {
-      writeProjectToLocation(activeProjectId);
-      setRequestedProjectId(activeProjectId);
-    }
-  }, [activeProjectId, requestedProjectId]);
+    if (!requestedUnavailable) return;
+    if (requestedProjectId && requestedProjectId === createdProjectId.current) return;
+    setUnavailableNotice(true);
+  }, [requestedUnavailable, requestedProjectId]);
 
   const proposed = (candidates ?? []).filter((candidate) => candidate.status === "proposed");
   const workspaceLoading = activeProjectId !== null && (candidates === undefined || canonObjects === undefined || latestCompilation === undefined);
@@ -90,16 +95,19 @@ export function DevelopPage() {
     }
   }
 
+  // Selecting a project is a real navigation (pushes history), so browser
+  // Back/Forward moves between visited projects and the router restores each.
   function selectProject(projectId: Id<"projects">) {
-    writeProjectToLocation(projectId);
-    setRequestedProjectId(projectId);
     setEdits({});
     setError(null);
+    setUnavailableNotice(false);
+    navigate({ to: "/develop", search: { project: projectId } });
   }
 
   async function createProject() {
     await runOperation("project", async () => {
       const result = await saveProject({ title: "Untitled project", developmentStatus: "In development", meta: {}, objects: [] });
+      createdProjectId.current = result.projectId as Id<"projects">;
       selectProject(result.projectId as Id<"projects">);
     });
   }
@@ -146,7 +154,7 @@ export function DevelopPage() {
                 {projects.map((project) => <option key={project._id} value={project._id}>{project.title}</option>)}
               </select>
             </label>
-            <a className="button button-secondary" href="/projects">All projects</a>
+            <Link className="button button-secondary" to="/projects">All projects</Link>
           </div>
         ) : null}
       </header>
@@ -159,8 +167,10 @@ export function DevelopPage() {
         </section>
       ) : null}
 
-      {requestedProjectId && !requestedProject && projects.length > 0 ? (
-        <section className="develop-card" role="status"><p>The requested project is unavailable. GreenLight opened your first authorized project and corrected the URL.</p></section>
+      {unavailableNotice ? (
+        <section className="develop-card" role="status">
+          <p>The requested project was unavailable, so GreenLight opened your first authorized project and corrected the address. Choose a project above to continue.</p>
+        </section>
       ) : null}
 
       {error ? <section className="develop-card" role="alert"><h2>Operation failed</h2><p>{error}</p></section> : null}

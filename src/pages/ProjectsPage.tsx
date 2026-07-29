@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
@@ -25,6 +26,7 @@ function projectInitials(title: string): string {
 export function ProjectsPage() {
   const projects = useQuery(api.projects.listProjects);
   const saveProject = useMutation(api.projects.saveProjectSnapshot);
+  const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [title, setTitle] = useState("");
@@ -46,7 +48,7 @@ export function ProjectsPage() {
         meta: {},
         objects: [],
       });
-      window.location.assign(`/develop?project=${encodeURIComponent(String(result.projectId))}`);
+      navigate({ to: "/develop", search: { project: String(result.projectId) } });
     } catch (operationError) {
       setError(operationError instanceof Error ? operationError.message : "The project could not be created.");
       setCreating(false);
@@ -74,7 +76,7 @@ export function ProjectsPage() {
 
       <section className="project-summary-row" aria-label="Project summary">
         <div><span>Projects</span><strong>{projects?.length ?? "—"}</strong></div>
-        <div><span>In development</span><strong>{projects?.filter((project) => project.developmentStatus !== "Delivered").length ?? "—"}</strong></div>
+        <div><span>In development</span><strong>{projects?.filter((project) => (project.developmentStatus ?? "In development") === "In development").length ?? "—"}</strong></div>
       </section>
 
       <div className="list-toolbar">
@@ -103,9 +105,9 @@ export function ProjectsPage() {
               </div>
               <h2>{project.title}</h2>
               <p>Updated {formatUpdated(project.updatedAt)}</p>
-              <a className="button button-secondary" href={`/develop?project=${encodeURIComponent(String(project._id))}`}>
+              <Link className="button button-secondary" to="/develop" search={{ project: String(project._id) }}>
                 Open project <Icon name="arrow" />
-              </a>
+              </Link>
             </div>
           </article>
         ))}
