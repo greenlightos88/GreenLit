@@ -21,6 +21,11 @@ mock.module("convex/react", () => ({
 }));
 
 mock.module("@clerk/react", () => ({
+  useAuth: () => ({
+    isLoaded: true,
+    isSignedIn: false,
+    getToken: async () => null,
+  }),
   SignInButton: ({ children }: { children: ReactNode }) => <>{children}</>,
   SignOutButton: ({ children }: { children: ReactNode }) => <>{children}</>,
   UserButton: () => <div data-testid="user-button" />,
