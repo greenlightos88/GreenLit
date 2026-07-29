@@ -23,6 +23,7 @@ import { AuthBoundary } from "./auth/AuthBoundary";
 import { ConfigError } from "./auth/ConfigError";
 import { useAuthForConvex } from "./auth/useAuthForConvex";
 import "./styles.css";
+import "./workspace.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -112,7 +113,6 @@ try {
     </StrictMode>,
   );
 } catch (error) {
-  // Missing/invalid configuration must fail with a clear message, not a blank page.
   root.render(
     <StrictMode>
       <ConfigError message={error instanceof Error ? error.message : String(error)} />
