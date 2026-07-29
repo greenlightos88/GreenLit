@@ -23,6 +23,7 @@ import { AuthBoundary } from "./auth/AuthBoundary";
 import { ConfigError } from "./auth/ConfigError";
 import { useAuthForConvex } from "./auth/useAuthForConvex";
 import "./styles.css";
+import "./workspace.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,6 +40,12 @@ const overviewRoute = createRoute({
 const developRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/develop",
+  // The active project is navigation state only; Convex remains authoritative
+  // for access. `project` is validated as an optional string here so the router
+  // owns `/develop?project=<id>` and back/forward restoration is SPA-native.
+  validateSearch: (search: Record<string, unknown>): { project?: string } => ({
+    project: typeof search.project === "string" ? search.project : undefined,
+  }),
   component: DevelopPage,
 });
 const projectsRoute = createRoute({
@@ -112,7 +119,6 @@ try {
     </StrictMode>,
   );
 } catch (error) {
-  // Missing/invalid configuration must fail with a clear message, not a blank page.
   root.render(
     <StrictMode>
       <ConfigError message={error instanceof Error ? error.message : String(error)} />

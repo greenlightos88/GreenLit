@@ -17,6 +17,7 @@ mock.module("convex/react", () => ({
     authState === "signedOut" ? <>{children}</> : null,
   Authenticated: ({ children }: { children: ReactNode }) =>
     authState === "authenticated" ? <>{children}</> : null,
+  useQuery: () => undefined,
   useMutation: () => () => Promise.resolve({ id: "u1", email: null, displayName: null }),
 }));
 

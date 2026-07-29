@@ -1,0 +1,33 @@
+.project-summary-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.project-loading { padding: 2rem; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); }
+.project-card-content > .button { align-self: flex-start; margin-top: auto; }
+
+.develop-page { width: min(100%, 76rem); max-width: none; }
+.develop-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.5rem; align-items: end; }
+.develop-header-copy { min-width: 0; }
+.develop-header-copy h1 { font-family: var(--serif); font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 500; }
+.develop-header-copy > p:last-child { max-width: 46rem; color: var(--muted); }
+.develop-project-row { justify-content: flex-end; margin: 0; }
+.develop-project-row label { min-width: 14rem; color: var(--muted); font-size: .75rem; }
+.develop-state-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.develop-state-row > div { padding: .85rem 1rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--surface); }
+.develop-state-row span { display: block; color: var(--faint); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; }
+.develop-state-row strong { display: block; margin-top: .25rem; font-size: 1rem; }
+.develop-card-primary { padding: clamp(1.25rem, 3vw, 2rem); background: var(--surface-strong); }
+.develop-card-primary h2 { font-family: var(--serif); font-size: 1.45rem; font-weight: 500; }
+.develop-card-heading { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+.develop-card-heading p { margin: 0; color: var(--muted); font-size: .82rem; }
+.candidate-field { grid-template-columns: minmax(7rem, 12rem) minmax(0, 1fr); }
+.candidate-field input { min-width: 0; }
+.canon-summary li { overflow-wrap: anywhere; }
+.compiled-section { overflow-wrap: anywhere; }
+
+@media (max-width: 760px) {
+  .develop-header { grid-template-columns: 1fr; align-items: stretch; }
+  .develop-project-row { justify-content: stretch; align-items: stretch; flex-direction: column; }
+  .develop-project-row label { min-width: 0; }
+  .develop-state-row { grid-template-columns: 1fr; }
+  .candidate-head { flex-wrap: wrap; }
+  .candidate-field { grid-template-columns: 1fr; }
+  .project-summary-row { grid-template-columns: 1fr 1fr; }
+}
